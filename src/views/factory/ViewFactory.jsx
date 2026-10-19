@@ -21,7 +21,7 @@ import ViewLayout from "@/components/ViewLayout";
  */
 export default function ViewFactory({ resource }) {
   const { data, loading, refreshing, fetched_at, error, refresh } = useFactoryData(resource.host, resource.factory);
-  const { is_running, loading: process_loading, start, stop } = useFactoryProcess(
+  const { status, is_running, is_direct, loading: process_loading, start, stop, restart } = useFactoryProcess(
     resource.host,
     resource.factory,
   );
@@ -51,14 +51,28 @@ export default function ViewFactory({ resource }) {
       onRefresh={refresh}
       actions={
         <>
-          <button
-            type="button"
-            style={actionButtonStyle}
-            onClick={() => (is_running ? stop() : start())}
-            disabled={process_loading}
-          >
-            {is_running ? "■ Stop" : "▶ Start"}
-          </button>
+          {is_direct ? (
+            <span
+              style={mutedStyle}
+              title={`pid ${status?.pid}: started outside pm2, so it can't be stopped from here. Stop it on the host.`}
+            >
+              Running directly
+            </span>
+          ) : (
+            <button
+              type="button"
+              style={actionButtonStyle}
+              onClick={() => (is_running ? stop() : start())}
+              disabled={process_loading}
+            >
+              {is_running ? "■ Stop" : "▶ Start"}
+            </button>
+          )}
+          {is_running && (
+            <button type="button" style={actionButtonStyle} onClick={restart} disabled={process_loading}>
+              ↻ Restart
+            </button>
+          )}
           <button type="button" style={actionButtonStyle} onClick={openLogs}>
             Logs
           </button>
@@ -190,6 +204,9 @@ const emptyStyle = {
   color: "var(--muted-foreground)",
   fontStyle: "italic",
 };
+
+/** @type {React.CSSProperties} */
+const mutedStyle = { padding: "5px 4px", fontSize: 12, color: "var(--muted-foreground)" };
 
 /** @type {React.CSSProperties} */
 const actionButtonStyle = {

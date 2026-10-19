@@ -104,7 +104,7 @@ export async function confirmDialog(message, title) {
  * @returns {Promise<void>}
  */
 export async function showError(err) {
-  await message(String(err), { title: "control-room", kind: "error" });
+  await message(String(err), { title: "Control Room", kind: "error" });
 }
 
 /**
@@ -361,11 +361,10 @@ export async function factoryOrchestrator(host, factory) {
 
 /**
  * @typedef {Object} FactoryProcessStatus
- * @property {string} status - "online" | "stopped" | "errored" | "not_found" | ...
- * @property {number | null} pid
+ * @property {string} status - "online" (under pm2) | "direct" (run outside pm2) | "stopped"
+ * @property {string | null} pid
  * @property {number | null} cpu
  * @property {number | null} memory
- * @property {number | null} uptime_ms
  */
 
 /**
@@ -376,7 +375,8 @@ export async function checkPm2Available() {
 }
 
 /**
- * Start a factory repo under pm2 (reads its package.json `main` field).
+ * Start a factory repo under pm2 (its package.json `main`). Refused when it
+ * already runs, under pm2 or directly.
  * @param {string} host
  * @param {string} factory - name in the central config
  * @returns {Promise<void>}
@@ -392,6 +392,16 @@ export async function factoryStart(host, factory) {
  */
 export async function factoryStop(host, factory) {
   return invoke("factory_stop", { host, factory });
+}
+
+/**
+ * Restart under pm2. Like stop, refused unless the factory runs under pm2.
+ * @param {string} host
+ * @param {string} factory - name in the central config
+ * @returns {Promise<void>}
+ */
+export async function factoryRestart(host, factory) {
+  return invoke("factory_restart", { host, factory });
 }
 
 /**

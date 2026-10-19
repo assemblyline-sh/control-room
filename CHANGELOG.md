@@ -27,7 +27,16 @@ stay in that repo.
 - Work-record links in a `log.jsonl` come from `.orchestrator/factory.json`, and a `local-` run
   is not linked.
 
+### Added
+
+- Restart for a factory under pm2.
+
 ### Fixed
+
+- Start refuses a factory that already runs, under pm2 or directly, and stop refuses one that
+  isn't under pm2, as al-control's `procs` do (fob-watch had no guards). Status comes from the
+  probe, so a factory started outside pm2 shows as "running directly" instead of "not started".
+  Start All and Stop All report what was refused.
 
 - Clear never deletes a bin a `lib-factory:move_files` conveyor drains, including each bin in a
   `moves` array (fob-watch only knew `lib-worker:move_files` with one `source_bin`).

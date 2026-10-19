@@ -69,10 +69,10 @@ export default function OnboardingPage() {
     <main style={pageStyle}>
       <div style={cardStyle}>
         <h1 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 600 }}>
-          Welcome to control-room
+          Welcome to Control Room
         </h1>
         <p style={{ margin: "0 0 24px", color: "var(--muted-foreground)" }}>
-          Point control-room at one or more local <code>factory-*</code> repos. They&apos;re saved
+          Point Control Room at one or more local <code>factory-*</code> repos. They&apos;re saved
           to <code>~/.assemblyline/al-control/config.yml</code> under the <code>local</code> host — the
           same config the al-control CLI reads.
         </p>

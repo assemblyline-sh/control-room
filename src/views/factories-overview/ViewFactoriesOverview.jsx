@@ -9,7 +9,8 @@ import ViewLayout from "@/components/ViewLayout";
  */
 
 /**
- * Cross-factory pm2 status table with Start All / Stop All. Refreshes every
+ * Cross-factory process table with Start All (the stopped ones) / Stop All
+ * (the ones under pm2). Refreshes every
  * 2s while open — see useFactoriesOverview for why this view is exempt from
  * the app's usual manual-refresh pattern.
  *
@@ -67,7 +68,9 @@ export default function ViewFactoriesOverview({ resource }) {
 
 /** @param {string} status */
 function displayStatus(status) {
-  return status === "not_found" ? "not started" : status;
+  if (status === "online") return "online (pm2)";
+  if (status === "direct") return "running directly";
+  return status;
 }
 
 /** @param {number} bytes */

@@ -66,6 +66,7 @@ pub fn run() {
             pm2::check_pm2_available,
             pm2::factory_start,
             pm2::factory_stop,
+            pm2::factory_restart,
             pm2::factory_status,
             pm2::start_log_tail,
             pm2::stop_log_tail,

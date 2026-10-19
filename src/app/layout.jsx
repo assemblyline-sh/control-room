@@ -3,7 +3,7 @@ import "./globals.css";
 import "@xterm/xterm/css/xterm.css";
 
 export const metadata = {
-  title: "control-room",
+  title: "Control Room",
   description: "The factory floor of every Assembly Line factory, on this machine and over SSH",
 };
 

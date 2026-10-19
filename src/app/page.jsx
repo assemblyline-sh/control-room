@@ -60,7 +60,7 @@ export default function ControlRoomPage() {
           <h1 style={titleStyle}>Can&apos;t read the al-control config</h1>
           <pre style={errorStyle}>{error}</pre>
           <p style={hintStyle}>
-            control-room and the al-control CLI share <code>~/.assemblyline/al-control/config.yml</code>.
+            Control Room and the al-control CLI share <code>~/.assemblyline/al-control/config.yml</code>.
             Fix the file, then reload (Cmd-R).
           </p>
         </div>

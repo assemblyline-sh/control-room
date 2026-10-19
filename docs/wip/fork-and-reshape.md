@@ -1,6 +1,6 @@
 # Fork fob-watch into control-room
 
-## Status: IN PROGRESS (~65%)
+## Status: IN PROGRESS (~80%)
 
 control-room is the desktop window onto Assembly Line factory floors, forked from fob-watch
 0.6.0 with a fresh history. It reads al-control's config, runs al-control's probe for every
@@ -76,11 +76,15 @@ none of fob-factory's guards.
 - [x] `scripts/check-probe.mjs` (`npm run check:probe`, pinned `@assemblyline/al-control`
       0.3.0) and `.github/workflows/ci.yml`: byte check, typecheck, lint, `cargo test`
 
-### Phase 3: pm2 parity ❌
-- [ ] Start refuses when the factory already runs (pm2 or direct); stop refuses when it isn't
-      under pm2 (from the probe's `procs`)
-- [ ] Restart
-- [ ] Tests for both guards
+### Phase 3: pm2 parity ✅
+- [x] Status, start, stop and restart from one probe `factories` query (`Target::inspect`), as
+      al-control's `procs`: start refuses a running factory (pm2 or direct); stop and restart
+      refuse one that isn't under pm2. Status "online" / "direct" / "stopped" matches
+      `al-control procs list` on both machines
+- [x] Restart in the factory view; "Running directly" instead of a Start button that would
+      fail; refusals shown in a dialog, Start All / Stop All only act on stopped / online rows
+- [x] Local pm2 is the one next to the probe's node, with that dir on PATH (Finder-launched app)
+- [x] Unit tests for both guards (32 Rust tests)
 
 ### Phase 4: Ship ❌
 - [ ] README, CLAUDE.md, CHANGELOG 0.1.0
