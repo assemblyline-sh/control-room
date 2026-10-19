@@ -1,6 +1,6 @@
 # Fork fob-watch into control-room
 
-## Status: IN PROGRESS (~90%)
+## Status: IN PROGRESS (~95%)
 
 control-room is the desktop window onto Assembly Line factory floors, forked from fob-watch
 0.6.0 with a fresh history. It reads al-control's config, runs al-control's probe for every
@@ -47,7 +47,7 @@ none of fob-factory's guards.
 
 ## Implementation Phases
 
-### Phase 1: Fork, rename, config 🔄
+### Phase 1: Fork, rename, config ✅
 - [x] Copy fob-watch 0.6.0's tracked files; fresh history; Apache-2.0 LICENSE and NOTICE
 - [x] Scrub customer and host names (README, comments, ignored tests read a host and factory
       from env vars instead)
@@ -59,7 +59,7 @@ none of fob-factory's guards.
       `@assemblyline/lib-factory` detection); update the Rust types (`factory`, not `worker`)
 - [x] Clear planner: `lib-factory:move_files` and `moves` arrays, with tests
 - [x] `cargo test` (39, plus probe, error-key and clear-plan parity on real factories), typecheck, lint pass
-- [ ] Public repo `assemblyline-sh/control-room`, pushed (Phase 4)
+- [x] Public repo `assemblyline-sh/control-room`, pushed
 
 ### Phase 2: The probe for every host ✅
 - [x] One probe-backed `Source` for every host (`source/probe.rs`): this machine's `node` (the
@@ -93,8 +93,8 @@ none of fob-factory's guards.
       and Restart, line summaries from the probe, factories overview "online (pm2)"
 - [ ] Alex in the native window: every view on this machine and alex-linux-pc, a restart, a
       log.jsonl work-record link
-- [ ] Public repo `assemblyline-sh/control-room` (blocked on approval); push; tag v0.1.0 so the
-      release workflow builds macOS and Windows
+- [x] Public repo `assemblyline-sh/control-room`; v0.1.0 tagged; CI and the release workflow
+      pass (macOS universal, Windows). Release is a draft until published
 - [x] `assemblyline.sh/docs/wip/cli-architecture.md` Phase 6 and the workspace CLAUDE.md
 
 ## Related Files
