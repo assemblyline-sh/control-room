@@ -9,7 +9,7 @@ The desktop companion to the [al-control](https://github.com/assemblyline-sh/al-
 read the same config and run the same probe, so they always agree on what is in a bin and what
 is safe to delete.
 
-**Beta.** macOS, Windows and Linux builds; the macOS build is unsigned (see Install).
+**Beta.** macOS (universal) and Windows builds; the macOS build isn't notarized yet (see Install).
 [Docs](https://assemblyline.sh/docs) · [About](https://assemblyline.sh) · [Changelog](CHANGELOG.md)
 
 ## What it shows
@@ -47,14 +47,30 @@ whichever signs in first, the other rides along.
 
 ## Install
 
-Download the build for your platform from
-[Releases](https://github.com/assemblyline-sh/control-room/releases).
+**macOS:**
 
-The macOS `.dmg` is unsigned, so Gatekeeper blocks the first launch. Clear the quarantine flag:
+```bash
+curl -fsSL https://raw.githubusercontent.com/assemblyline-sh/control-room/main/install.sh | bash
+```
+
+It downloads the latest release into `/Applications` (or `~/Applications`), and run again it
+updates. Read [install.sh](install.sh) first if you like; it's short.
+
+**Windows:** download the `.exe` or `.msi` from
+[Releases](https://github.com/assemblyline-sh/control-room/releases/latest).
+
+### macOS: "Control Room" Not Opened
+
+Temporary, until the macOS build is signed and notarized with an Apple Developer ID. If you
+downloaded the `.dmg` in a browser, macOS quarantines the app and refuses to open it ("Apple
+could not verify 'Control Room' is free of malware"). Clear the flag once after installing:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Control Room.app"
 ```
+
+Or open System Settings → Privacy & Security and click **Open Anyway**. The install script
+above doesn't hit this: `curl` downloads aren't quarantined.
 
 ## Config
 

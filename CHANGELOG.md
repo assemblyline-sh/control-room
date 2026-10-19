@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `install.sh`: install or update the macOS app with one `curl` command. A `curl` download isn't
+  quarantined, so it opens without the "Not Opened" dialog until the build is notarized.
+
+### Changed
+
+- README: the install script, and clearing the quarantine flag as the temporary fix for a
+  browser download.
+
 ## [0.1.0] - 2026-10-19
 
 Forked from fob-watch 0.6.0 (FinOpsBricks) with a fresh history. Its changelog and design log
