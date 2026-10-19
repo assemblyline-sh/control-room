@@ -1,6 +1,6 @@
 # Fork fob-watch into control-room
 
-## Status: IN PROGRESS (~80%)
+## Status: IN PROGRESS (~90%)
 
 control-room is the desktop window onto Assembly Line factory floors, forked from fob-watch
 0.6.0 with a fresh history. It reads al-control's config, runs al-control's probe for every
@@ -59,8 +59,7 @@ none of fob-factory's guards.
       `@assemblyline/lib-factory` detection); update the Rust types (`factory`, not `worker`)
 - [x] Clear planner: `lib-factory:move_files` and `moves` arrays, with tests
 - [x] `cargo test` (39, plus probe, error-key and clear-plan parity on real factories), typecheck, lint pass
-- [ ] Public repo
-      `assemblyline-sh/control-room`, pushed
+- [ ] Public repo `assemblyline-sh/control-room`, pushed (Phase 4)
 
 ### Phase 2: The probe for every host ✅
 - [x] One probe-backed `Source` for every host (`source/probe.rs`): this machine's `node` (the
@@ -86,12 +85,17 @@ none of fob-factory's guards.
 - [x] Local pm2 is the one next to the probe's node, with that dir on PATH (Finder-launched app)
 - [x] Unit tests for both guards (32 Rust tests)
 
-### Phase 4: Ship ❌
-- [ ] README, CLAUDE.md, CHANGELOG 0.1.0
-- [ ] `npm run tauri:build`; install on this Mac; check every view against this machine and
-      a remote host
-- [ ] Tag v0.1.0
-- [ ] Update `assemblyline.sh/docs/wip/cli-architecture.md` Phase 6 and the workspace CLAUDE.md
+### Phase 4: Ship 🔄
+- [x] README, CLAUDE.md, CHANGELOG (Unreleased, to become 0.1.0)
+- [x] `npm run tauri:build` (`Control Room.app`, `.dmg` aarch64); installed in /Applications.
+      Opened from the Finder it finds node and polls the rail (a `node` child every 2 s)
+- [x] Browser render on real fixtures (`scripts/browser-mock.js`): rail, factory view with Stop
+      and Restart, line summaries from the probe, factories overview "online (pm2)"
+- [ ] Alex in the native window: every view on this machine and alex-linux-pc, a restart, a
+      log.jsonl work-record link
+- [ ] Public repo `assemblyline-sh/control-room` (blocked on approval); push; tag v0.1.0 so the
+      release workflow builds macOS and Windows
+- [x] `assemblyline.sh/docs/wip/cli-architecture.md` Phase 6 and the workspace CLAUDE.md
 
 ## Related Files
 

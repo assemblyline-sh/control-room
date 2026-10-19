@@ -28,7 +28,7 @@ export default function TreeIcon({ type }) {
 function visual(type) {
   switch (type) {
     case "factory":
-      return { letter: "W", color: "#58a6ff" };
+      return { letter: "▣", color: "#58a6ff" };
     case "line":
       return { letter: "L", color: "#79c0ff" };
     case "station":

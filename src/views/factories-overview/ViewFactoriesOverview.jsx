@@ -23,7 +23,7 @@ export default function ViewFactoriesOverview({ resource }) {
   return (
     <ViewLayout
       title="Factories"
-      sub={`${resource.host === "local" ? "This machine" : resource.host} · live pm2 status, refreshed every 2s`}
+      sub={`${resource.host === "local" ? "This machine" : resource.host} · live process status, refreshed every 2s`}
       error={error}
       actions={
         <>

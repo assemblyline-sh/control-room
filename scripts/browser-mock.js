@@ -22,7 +22,6 @@ function mockTauri() {
     convertFileSrc: (p) => p,
     invoke: async (cmd, args) => {
       if (cmd.startsWith("plugin:")) return 0;
-      if (cmd === "read_legacy_config") return [];
       if (cmd === "clear_workpieces") return { removed: (args?.dirs ?? []).length };
       if (cmd === "requeue_workpieces") return { requeued: (args?.workpieces ?? []).length };
       if (cmd === "terminal_open") return "term-mock";
