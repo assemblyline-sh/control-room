@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-19
+
 Forked from fob-watch 0.6.0 (FinOpsBricks) with a fresh history. Its changelog and design log
 stay in that repo.
 
