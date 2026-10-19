@@ -94,7 +94,7 @@ none of fob-factory's guards.
 - [ ] Alex in the native window: every view on this machine and alex-linux-pc, a restart, a
       log.jsonl work-record link
 - [x] Public repo `assemblyline-sh/control-room`; v0.1.0 tagged; CI and the release workflow
-      pass (macOS universal, Windows). Release is a draft until published
+      pass (macOS universal, Windows). published 2026-10-19 as Latest
 - [x] `assemblyline.sh/docs/wip/cli-architecture.md` Phase 6 and the workspace CLAUDE.md
 
 ## Related Files
