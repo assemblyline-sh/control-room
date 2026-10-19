@@ -73,7 +73,7 @@ UI shape: `src/app/page.jsx` boots config and renders `<Shell />`. `Shell` owns 
 
 ## Engineering standards applied
 
-Per `/Users/alex/ec2code/alex/engineering-standards`:
+Per the [engineering standards](https://github.com/alexjv89/engineering-standards):
 
 - **JS + JSDoc, not TypeScript.** Add `// @ts-check` at the top of each new file and JSDoc types for params / returns.
 - **Variables snake_case, functions camelCase.** Example: `const can_finish = ...`; `function addRepo() { ... }`.

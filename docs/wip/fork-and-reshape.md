@@ -1,6 +1,6 @@
 # Fork fob-watch into control-room
 
-## Status: IN PROGRESS (~5%)
+## Status: IN PROGRESS (~30%)
 
 control-room is the desktop window onto Assembly Line factory floors, forked from fob-watch
 0.6.0 with a fresh history. It reads al-control's config, runs al-control's probe for every
@@ -47,18 +47,19 @@ none of fob-factory's guards.
 
 ## Implementation Phases
 
-### Phase 1: Fork, rename, config ❌
-- [ ] Copy fob-watch 0.6.0's tracked files; fresh history; Apache-2.0 LICENSE and NOTICE
-- [ ] Scrub customer and host names (README, comments, ignored tests read a host and factory
+### Phase 1: Fork, rename, config 🔄
+- [x] Copy fob-watch 0.6.0's tracked files; fresh history; Apache-2.0 LICENSE and NOTICE
+- [x] Scrub customer and host names (README, comments, ignored tests read a host and factory
       from env vars instead)
-- [ ] Drop fob-watch's design WIPs (its history keeps them); keep `docs/architecture/`
-- [ ] Names: package, Cargo crate, product, window title, bundle id, release workflow
-- [ ] Factory vocabulary in Rust, JS, file and folder names, IPC command names
-- [ ] Config: al-control's path, `factories:`, socket dir; drop the legacy import
-- [ ] Vendor al-control 0.3.0's `probe.js` (queries `factories`, `factory.json`,
+- [x] Drop fob-watch's design WIPs (its history keeps them); keep `docs/architecture/`
+- [x] Names: package, Cargo crate, product, window title, bundle id, release workflow
+- [x] Factory vocabulary in Rust, JS, file and folder names, IPC command names
+- [x] Config: al-control's path, `factories:`, socket dir; drop the legacy import
+- [x] Vendor al-control 0.3.0's `probe.js` (queries `factories`, `factory.json`,
       `@assemblyline/lib-factory` detection); update the Rust types (`factory`, not `worker`)
-- [ ] Clear planner: `lib-factory:move_files` and `moves` arrays, with tests
-- [ ] `cargo test`, `npm run typecheck`, `npm run lint` pass; public repo
+- [x] Clear planner: `lib-factory:move_files` and `moves` arrays, with tests
+- [x] `cargo test` (39, plus probe, error-key and clear-plan parity on real factories), typecheck, lint pass
+- [ ] Public repo
       `assemblyline-sh/control-room`, pushed
 
 ### Phase 2: The probe for every host ❌
@@ -78,7 +79,7 @@ none of fob-factory's guards.
 ### Phase 4: Ship ❌
 - [ ] README, CLAUDE.md, CHANGELOG 0.1.0
 - [ ] `npm run tauri:build`; install on this Mac; check every view against this machine and
-      alex-linux-pc
+      a remote host
 - [ ] Tag v0.1.0
 - [ ] Update `assemblyline.sh/docs/wip/cli-architecture.md` Phase 6 and the workspace CLAUDE.md
 
