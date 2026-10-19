@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b0e14;
+  --foreground: #e6edf3;
+  --muted: #161b22;
+  --muted-foreground: #8b949e;
+  --border: #30363d;
+  --accent: #58a6ff;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Thin custom scrollbars. Vertical-only by default (horizontal hidden via
+   height: 0); containers that genuinely need horizontal scroll override
+   per-element. Track is transparent, thumb is muted-on-muted. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 148, 158, 0.3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 0;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(139, 148, 158, 0.3);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 148, 158, 0.6);
+}

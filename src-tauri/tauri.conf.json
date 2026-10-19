@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Control Room",
+  "version": "0.1.0",
+  "identifier": "sh.assemblyline.controlroom",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../out"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Control Room",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": "([a-zA-Z][a-zA-Z+.-]*:|/).+"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "The factory floor of every Assembly Line factory, on this machine and over SSH",
+    "longDescription": "Control Room is a desktop window onto Assembly Line factory floors: lines, stations, bins and workpieces, failures grouped by error, guarded clear and retry, pm2 controls and a terminal, for factories on this machine and on hosts reached over SSH."
+  }
+}
