@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::central_config::HostEntry;
 use crate::commands::CommandError;
 use crate::resolve::resolve;
-use crate::source::local::stations_path;
-use crate::source::ssh;
+use std::path::{Component, Path, PathBuf};
+use crate::source::{probe, ssh};
 
 #[derive(Serialize)]
 pub struct HostCheck {
@@ -31,7 +31,7 @@ pub async fn test_host(ssh: String, node: Option<String>) -> Result<HostCheck, C
         node: node.filter(|n| !n.is_empty()),
         factories: vec![],
     };
-    let data = ssh::probe(&host, serde_json::json!({ "type": "factories", "paths": {} }))?;
+    let data = probe::probe(&host, serde_json::json!({ "type": "factories", "paths": {} }))?;
     Ok(HostCheck {
         pm2_found: data["pm2_found"] == true,
         running: data["procs"]
@@ -64,7 +64,7 @@ pub async fn check_factory_path(host: String, path: String) -> Result<PathCheck,
         let p = crate::central_config::expand_tilde(&path);
         return Ok(PathCheck { exists: p.exists(), main: None, root: p.display().to_string() });
     }
-    let data = ssh::probe(&h, serde_json::json!({ "type": "factories", "paths": { "candidate": path } }))?;
+    let data = probe::probe(&h, serde_json::json!({ "type": "factories", "paths": { "candidate": path } }))?;
     let w = &data["factories"][0];
     Ok(PathCheck {
         exists: w["exists"] == true,
@@ -91,7 +91,7 @@ pub fn terminal_dir(host: &str, factory: &str, dir: Option<&str>) -> Result<Term
         }));
     }
 
-    let data = ssh::probe(&r.host, serde_json::json!({ "type": "factories", "paths": { factory: r.factory.path } }))?;
+    let data = probe::probe(&r.host, serde_json::json!({ "type": "factories", "paths": { factory: r.factory.path } }))?;
     let root = data["factories"][0]["root"].as_str().unwrap_or_default().to_string();
     let target = match dir {
         Some(d) => {
@@ -130,8 +130,8 @@ pub async fn fetch_file(host: String, factory: String, file_path: String) -> Res
     let r = resolve(&host, &factory)?;
     if r.host.is_local {
         let root = std::path::PathBuf::from(r.factory.abs_path.unwrap_or_default());
-        let abs = crate::source::local::lexical(&root.join(&file_path));
-        if !abs.starts_with(crate::source::local::lexical(&root)) {
+        let abs = lexical(&root.join(&file_path));
+        if !abs.starts_with(lexical(&root)) {
             return Err(CommandError::Io(format!("refused to read outside factory repo: {}", file_path)));
         }
         return Ok(abs.display().to_string());
@@ -144,7 +144,7 @@ pub async fn fetch_file(host: String, factory: String, file_path: String) -> Res
     let (Some(station), Some(bin), Some(file)) = (parts.next(), parts.next(), parts.next()) else {
         return Err(CommandError::Io(format!("Not a workpiece file: {}", file_path)));
     };
-    let data = ssh::probe(
+    let data = probe::probe(
         &r.host,
         serde_json::json!({ "type": "read", "path": r.factory.path, "dir": format!("{}/{}", station, bin), "file": file }),
     )?;
@@ -224,6 +224,31 @@ fn spawn_terminal_running(argv: &[String]) -> Result<(), CommandError> {
         .spawn()
         .map(|_| ())
         .map_err(|e| CommandError::Io(e.to_string()))
+}
+
+/// A dir given relative to temp/stations/, refusing anything that escapes it.
+pub fn stations_path(root: &Path, rel: &str) -> Result<PathBuf, CommandError> {
+    let stations_root = lexical(&root.join("temp").join("stations"));
+    let abs = lexical(&stations_root.join(rel));
+    if abs == stations_root || !abs.starts_with(&stations_root) {
+        return Err(CommandError::Io(format!("Refusing to touch outside temp/stations/: {}", rel)));
+    }
+    Ok(abs)
+}
+
+/// Collapse `.` and `..` without touching the filesystem.
+pub fn lexical(p: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for comp in p.components() {
+        match comp {
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::CurDir => {}
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
 }
 
 #[cfg(test)]

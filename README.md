@@ -34,14 +34,16 @@ is safe to delete.
                  Control Room (Tauri: Rust + Next.js)
                 ┌─────────────┴──────────────┐
           host: local                  host: <ssh alias>
-      reads the factory folders     ssh → node - (al-control's probe on stdin)
+      node - (al-control's probe)   ssh → node - (the same probe on stdin)
       pm2 directly                  ssh → pm2
                                     host needs node + pm2, nothing else
 ```
 
-The probe is al-control's `src/probe.js`, bundled byte for byte. Remote calls share
-al-control's SSH connection (`~/.assemblyline/al-control/ssh-%C`), so whichever signs in first,
-the other rides along.
+The probe is al-control's `src/probe.js`, bundled byte for byte, and it runs the same way for
+every host, so Control Room and the CLI compute the same lines, terminals and counts. On this
+machine it uses the `node` your login shell finds (or the local host's `node:` in the config).
+Remote calls share al-control's SSH connection (`~/.assemblyline/al-control/ssh-%C`), so
+whichever signs in first, the other rides along.
 
 ## Install
 
@@ -87,6 +89,7 @@ npm run tauri:dev     # Next.js dev server and the native window
 npm run tauri:build   # installers in src-tauri/target/release/bundle/
 npm run typecheck
 npm run lint
+npm run check:probe   # the bundled probe is al-control's, byte for byte
 cd src-tauri && cargo test
 ```
 

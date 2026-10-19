@@ -22,7 +22,7 @@ use tauri::{AppHandle, Emitter, State};
 use crate::central_config::HostEntry;
 use crate::commands::CommandError;
 use crate::resolve::resolve;
-use crate::source::ssh;
+use crate::source::{probe, ssh};
 
 /// Where a factory's pm2 lives. Remote `path` is as configured (`~` resolves
 /// on the host).
@@ -144,7 +144,7 @@ pub async fn factory_start(host: String, factory: String) -> Result<(), CommandE
         Target::Local { root } => (root.clone(), factory_main_entry(root)?),
         Target::Remote { host, path } => {
             // The probe resolves `~` and reads package.json on the host.
-            let data = ssh::probe(host, serde_json::json!({ "type": "factories", "paths": { factory.as_str(): path } }))?;
+            let data = probe::probe(host, serde_json::json!({ "type": "factories", "paths": { factory.as_str(): path } }))?;
             let w = &data["factories"][0];
             if w["exists"] != true {
                 return Err(CommandError::Pm2(format!("{} doesn't exist on {}", path, host.name)));

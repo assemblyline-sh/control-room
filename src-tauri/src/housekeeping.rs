@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::central_config::FactoryEntry;
 use crate::commands::CommandError;
-use crate::monitor::{build_lines, LineState};
+use crate::monitor::LineState;
 use crate::resolve::{resolve, resolve_host};
 use crate::source::{RawState, Source};
 
@@ -96,7 +96,7 @@ pub async fn plan_clear(host: String, scopes: Vec<Scope>, filter: Filter) -> Res
             continue;
         }
         let source = Source::for_entry(&h, w);
-        let planned = source.state().and_then(|state| plan_factory(&source, &state, w, &mine, &filter));
+        let planned = source.floor().and_then(|(state, lines)| plan_factory(&source, &state, &lines, w, &mine, &filter));
         factories.push(match planned {
             Ok(groups) => FactoryPlan { factory: w.name.clone(), error: None, has_keep_list: !w.keep.is_empty(), groups },
             Err(e) => FactoryPlan { factory: w.name.clone(), error: Some(e.to_string()), has_keep_list: !w.keep.is_empty(), groups: Vec::new() },
@@ -122,7 +122,8 @@ pub async fn clear_workpieces(host: String, factory: String, dirs: Vec<String>) 
 }
 
 fn clear_in(source: &Source, factory: &FactoryEntry, dirs: &[String]) -> Result<usize, CommandError> {
-    let allowed = clearable_dirs(&source.state()?, factory);
+    let (state, lines) = source.floor()?;
+    let allowed = clearable_dirs(&state, &lines, factory);
     if let Some(bad) = dirs.iter().find(|d| !allowed.contains(d.as_str())) {
         return Err(CommandError::Refused(format!(
             "{}: {} isn't clearable (not in a done bin or a terminal output, kept, drained by a conveyor, or gone). Nothing was deleted.",
@@ -192,10 +193,10 @@ fn clearable_bins(line: &LineState) -> Vec<(String, &'static str)> {
 }
 
 /// Every dir clear_workpieces may delete in this factory right now.
-fn clearable_dirs(state: &RawState, factory: &FactoryEntry) -> HashSet<String> {
+fn clearable_dirs(state: &RawState, lines: &HashMap<String, LineState>, factory: &FactoryEntry) -> HashSet<String> {
     let drained = drained_bins(state);
     let mut out = HashSet::new();
-    for line in build_lines(state).values() {
+    for line in lines.values() {
         for (station, bin) in clearable_bins(line) {
             let spec = format!("{}/{}", station, bin);
             if skip_for(&spec, factory, &drained).is_some() {
@@ -212,11 +213,11 @@ fn clearable_dirs(state: &RawState, factory: &FactoryEntry) -> HashSet<String> {
 fn plan_factory(
     source: &Source,
     state: &RawState,
+    lines: &HashMap<String, LineState>,
     factory: &FactoryEntry,
     scopes: &[&Scope],
     filter: &Filter,
 ) -> Result<Vec<BinGroup>, CommandError> {
-    let lines = build_lines(state);
     let drained = drained_bins(state);
     let wants_bin = |bin: &str| if bin == "done" { filter.done } else { filter.finished };
 
@@ -321,7 +322,7 @@ fn now_ms() -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::source::local::tests::make_factory;
+    use crate::source::fixtures::{local_source, make_factory};
 
     fn entry(root: &std::path::Path, keep: &[&str]) -> FactoryEntry {
         FactoryEntry {
@@ -341,9 +342,9 @@ mod tests {
     const BOTH: Filter = Filter { done: true, finished: true, older_than_days: None };
 
     fn plan(root: &std::path::Path, w: &FactoryEntry, scopes: &[Scope], filter: &Filter) -> Vec<BinGroup> {
-        let source = Source::Local { root: root.to_path_buf() };
-        let state = source.state().unwrap();
-        plan_factory(&source, &state, w, &scopes.iter().collect::<Vec<_>>(), filter).unwrap()
+        let source = local_source(root);
+        let (state, lines) = source.floor().unwrap();
+        plan_factory(&source, &state, &lines, w, &scopes.iter().collect::<Vec<_>>(), filter).unwrap()
     }
 
     // make_factory: VM1 → VM2 (terminal); VM1/output/wp-1, VM2/output/inv/wp-2.
@@ -375,8 +376,8 @@ mod tests {
         assert!(matches!(g[0].skip, Some(Skip::Kept { .. })) && g[0].dirs.is_empty() && g[0].count == 1);
         assert_eq!(g[1].skip, Some(Skip::Drained { by: "VM1".into(), target: "X1/input".into() }));
 
-        let source = Source::Local { root: root.clone() };
-        let allowed = clearable_dirs(&source.state().unwrap(), &w);
+        let (state, lines) = local_source(&root).floor().unwrap();
+        let allowed = clearable_dirs(&state, &lines, &w);
         assert!(allowed.is_empty());
     }
 
@@ -388,7 +389,7 @@ mod tests {
             r#"{"id":"id1","short_code":"VM1","line":"VM","dependencies":[],"steps":[{"slug":"lib-factory:move_files","config":{"moves":[{"source_bin":"VM2/output","target_bin":"X1/input"},{"source_bin":"VM1/done/ok","target_bin":"X2/input"}]}}]}"#,
         )
         .unwrap();
-        let drained = drained_bins(&Source::Local { root: root.clone() }.state().unwrap());
+        let drained = drained_bins(&local_source(&root).state().unwrap());
         assert_eq!(drained.get("VM2/output"), Some(&("VM1".to_string(), "X1/input".to_string())));
         assert_eq!(drained.get("VM1/done"), Some(&("VM1".to_string(), "X2/input".to_string())));
     }
@@ -410,10 +411,10 @@ mod tests {
         assert_eq!(plan(&root, &w, &[one, bin], &BOTH)[0].count, 2);
 
         // Non-terminal output is refused.
-        let source = Source::Local { root: root.clone() };
-        let state = source.state().unwrap();
+        let source = local_source(&root);
+        let (state, lines) = source.floor().unwrap();
         let bad = Scope::Bin { factory: "w".into(), station: "VM1".into(), bin: "output".into() };
-        assert!(matches!(plan_factory(&source, &state, &w, &[&bad], &BOTH), Err(CommandError::Refused(_))));
+        assert!(matches!(plan_factory(&source, &state, &lines, &w, &[&bad], &BOTH), Err(CommandError::Refused(_))));
     }
 
     #[test]
@@ -436,7 +437,7 @@ mod tests {
         wp(&root, "VM1/done/a");
         wp(&root, "VM1/done/b");
         wp(&root, "VM2/failed/f");
-        let source = Source::Local { root: root.clone() };
+        let source = local_source(&root);
         let st = |rel: &str| root.join("temp/stations").join(rel);
 
         // Each bad dir refuses the batch it's in, and nothing in it is deleted.
@@ -466,8 +467,9 @@ mod tests {
         wp(&root, "VM1/done/wp-0");
         wp(&root, "VM2/failed/wp-9");
         let w = entry(&root, &[]);
-        let source = Source::Local { root: root.clone() };
-        let mut allowed: Vec<String> = clearable_dirs(&source.state().unwrap(), &w).into_iter().collect();
+        let source = local_source(&root);
+        let (state, lines) = source.floor().unwrap();
+        let mut allowed: Vec<String> = clearable_dirs(&state, &lines, &w).into_iter().collect();
         allowed.sort();
         assert_eq!(allowed, vec!["VM1/done/wp-0", "VM2/output/inv/wp-2"]);
         assert_eq!(source.remove(&["VM1/done/wp-0".into()], &[]).unwrap(), 1);
@@ -537,7 +539,8 @@ mod remote_scratch {
         let factory = FactoryEntry { name: "scratch".into(), path: dir.clone(), keep: vec![], abs_path: None };
         let source = Source::for_entry(&host, &factory);
 
-        let plan = plan_factory(&source, &source.state().unwrap(), &factory, &[&Scope::Host], &Filter { done: true, finished: true, older_than_days: None }).unwrap();
+        let (state, lines) = source.floor().unwrap();
+        let plan = plan_factory(&source, &state, &lines, &factory, &[&Scope::Host], &Filter { done: true, finished: true, older_than_days: None }).unwrap();
         println!("plan: {:?}", plan.iter().map(|g| (g.station.as_str(), g.bin.as_str(), g.count)).collect::<Vec<_>>());
 
         let refused = clear_in(&source, &factory, &["S1/done/a".into(), "S2/failed/f".into()]);

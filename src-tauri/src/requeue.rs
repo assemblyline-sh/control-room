@@ -68,7 +68,7 @@ fn requeue_dirs(state: &RawState, station: &str, bin: &str, ids: Option<&[String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::source::local::tests::make_factory;
+    use crate::source::fixtures::{local_source, make_factory};
 
     fn wp(root: &std::path::Path, rel: &str) {
         let d = root.join("temp/stations").join(rel);
@@ -77,7 +77,7 @@ mod tests {
     }
 
     fn state(root: &std::path::Path) -> RawState {
-        Source::Local { root: root.to_path_buf() }.state().unwrap()
+        local_source(root).state().unwrap()
     }
 
     #[test]
@@ -108,7 +108,7 @@ mod tests {
     fn requeues_through_the_source() {
         let root = make_factory();
         wp(&root, "VM2/failed/wp-3");
-        let source = Source::Local { root: root.clone() };
+        let source = local_source(&root);
         let dirs = requeue_dirs(&source.state().unwrap(), "VM2", "failed", None).unwrap();
         assert_eq!(source.requeue(&dirs).unwrap(), 1);
         assert_eq!(state(&root).bins["VM2"]["input"].as_ref().unwrap()["wp-3"], "wp-3");

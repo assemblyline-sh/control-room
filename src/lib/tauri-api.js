@@ -341,15 +341,15 @@ export async function readFile(host, factory, file_path) {
 }
 
 /**
- * Parse the factory repo's `.env` file into a flat string map. Returns an
- * empty object if `.env` is missing or unparseable.
+ * The factory's org on the orchestrator, `<url>/orgs/<org>`, from its
+ * committed `.orchestrator/factory.json`; null when it has none.
  *
  * @param {string} host
  * @param {string} factory - name in the central config
- * @returns {Promise<Object<string, string>>}
+ * @returns {Promise<string | null>}
  */
-export async function readFactoryEnv(host, factory) {
-  return invoke("read_factory_env", { host, factory });
+export async function factoryOrchestrator(host, factory) {
+  return invoke("factory_orchestrator", { host, factory });
 }
 
 // ===========================================================================

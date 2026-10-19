@@ -41,8 +41,8 @@ mod tests {
             let wn = w.name.clone();
             let a = json!({ "host": h, "factory": wn });
             put(&mut out, "list_lines", a.clone(), tauri::async_runtime::block_on(mc::list_lines(h.clone(), wn.clone())));
+            put(&mut out, "factory_orchestrator", a.clone(), tauri::async_runtime::block_on(mc::factory_orchestrator(h.clone(), wn.clone())));
             put(&mut out, "factory_status", a.clone(), tauri::async_runtime::block_on(pm2::factory_status(h.clone(), wn.clone())));
-            put(&mut out, "read_factory_env", a.clone(), Ok::<_, String>(serde_json::Map::new()));
             put(&mut out, "list_failures", a.clone(), tauri::async_runtime::block_on(failures::list_failures(h.clone(), Some(wn.clone()))));
             for kind_done in [(true, false), (false, true), (true, true)] {
                 let scope = json!([{ "kind": "factory", "factory": wn }]);

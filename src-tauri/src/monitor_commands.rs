@@ -5,31 +5,20 @@
 
 use crate::commands::CommandError;
 use crate::monitor::{
-    build_lines, code_of, parse_events, parse_station, resolve_position, summarize_line, workpiece_link,
-    workpiece_rel_dir, LineState, LineSummary, LogEvent, Position, StationDef,
+    code_of, parse_events, parse_station, resolve_position, workpiece_link, workpiece_rel_dir, LogEvent, Position,
+    StationDef,
 };
-use crate::source::{FileContent, Source};
+use crate::source::{FileContent, LineSummary, Source};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 
 type LineDefs = serde_json::Map<String, serde_json::Value>;
 
-/// Root, line states, station defs, line defs and the orchestrator org URL.
-fn lines_with_defs(
-    source: &Source,
-) -> Result<(String, HashMap<String, LineState>, Vec<StationDef>, LineDefs, Option<String>), CommandError> {
-    let state = source.state()?;
-    let lines = build_lines(&state);
-    let defs = state.stations.iter().map(|s| parse_station(&s.data)).collect();
-    let orchestrator = orchestrator_base(&state);
-    Ok((state.root, lines, defs, state.lines, orchestrator))
-}
-
 /// `<orchestrator_url>/orgs/<org>` from the factory's committed
 /// `.orchestrator/factory.json` — the base of its line, station and
 /// work-record pages. `None` unless it has both.
-fn orchestrator_base(state: &crate::source::RawState) -> Option<String> {
-    let setting = |k: &str| state.factory.as_ref()?.get(k)?.as_str().filter(|v| !v.is_empty()).map(str::to_string);
+fn orchestrator_base(factory: Option<&serde_json::Value>) -> Option<String> {
+    let setting = |k: &str| factory?.get(k)?.as_str().filter(|v| !v.is_empty()).map(str::to_string);
     match (setting("orchestrator_url"), setting("org")) {
         (Some(url), Some(org)) if url.starts_with("https://") || url.starts_with("http://") => {
             Some(format!("{}/orgs/{}", url.trim_end_matches('/'), org))
@@ -57,16 +46,17 @@ pub struct LineRow {
 
 #[tauri::command]
 pub async fn list_lines(host: String, factory: String) -> Result<Vec<LineRow>, CommandError> {
-    let (_, lines, _, line_defs, _) = lines_with_defs(&Source::for_factory(&host, &factory)?)?;
+    let (lines, defs) = Source::for_factory(&host, &factory)?.lines_with_defs()?;
     let mut rows: Vec<LineRow> = lines
-        .into_iter()
-        .map(|(code, line)| LineRow {
-            name: line_text(&line_defs, &code, "name"),
-            description: line_text(&line_defs, &code, "description"),
-            code,
-            summary: summarize_line(&line),
+        .lines
+        .into_values()
+        .map(|line| LineRow {
+            name: line_text(&defs.lines, &line.code, "name"),
+            description: line_text(&defs.lines, &line.code, "description"),
+            code: line.code,
+            summary: line.summary,
             stations: line.stations,
-            terminal: line.terminal,
+            terminal: line.terminal.unwrap_or_default(),
         })
         .collect();
     rows.sort_by(|a, b| a.code.cmp(&b.code));
@@ -102,25 +92,22 @@ pub struct StationBinRow {
 
 #[tauri::command]
 pub async fn show_line(host: String, factory: String, line: String) -> Result<LineDetail, CommandError> {
-    let (_, lines, defs, line_defs, orchestrator) = lines_with_defs(&Source::for_factory(&host, &factory)?)?;
-    let line_state = lines
-        .get(&line)
-        .ok_or_else(|| CommandError::Io(format!("line not found: {}", line)))?;
+    let (mut lines, defs) = Source::for_factory(&host, &factory)?.lines_with_defs()?;
+    let line_state = lines.lines.remove(&line).ok_or_else(|| CommandError::Io(format!("line not found: {}", line)))?;
+    let terminal = line_state.terminal.unwrap_or_default();
+    let station_defs: Vec<StationDef> = defs.stations.iter().map(|s| parse_station(&s.data)).collect();
 
     let rows = line_state
         .stations
         .iter()
         .map(|station| {
-            let bins = line_state.bins.get(station);
-            let count = |b: &str| -> Option<u32> {
-                bins.and_then(|m| m.get(b)).and_then(|opt| opt.as_ref().map(|s| s.len() as u32))
-            };
-            let def = defs.iter().find(|d| code_of(d) == station);
+            let count = |b: &str| -> Option<u32> { line_state.counts.get(station).and_then(|m| m.get(b).copied().flatten()) };
+            let def = station_defs.iter().find(|d| code_of(d) == station);
             StationBinRow {
                 station: station.clone(),
                 name: def.and_then(|d| d.name.clone()),
                 description: def.and_then(|d| d.description.clone()),
-                is_terminal: station == &line_state.terminal,
+                is_terminal: station == &terminal,
                 input: count("input"),
                 doing: count("doing"),
                 output: count("output"),
@@ -131,13 +118,13 @@ pub async fn show_line(host: String, factory: String, line: String) -> Result<Li
         .collect();
 
     Ok(LineDetail {
-        code: line_state.code.clone(),
-        name: line_text(&line_defs, &line, "name"),
-        description: line_text(&line_defs, &line, "description"),
-        terminal: line_state.terminal.clone(),
+        code: line_state.code,
+        name: line_text(&defs.lines, &line, "name"),
+        description: line_text(&defs.lines, &line, "description"),
+        terminal,
         stations: rows,
-        summary: summarize_line(line_state),
-        orchestrator,
+        summary: line_state.summary,
+        orchestrator: orchestrator_base(defs.factory.as_ref()),
     })
 }
 
@@ -161,7 +148,9 @@ pub async fn show_station(
     line: String,
     station: String,
 ) -> Result<StationDetail, CommandError> {
-    let (_, lines, defs, _, orchestrator) = lines_with_defs(&Source::for_factory(&host, &factory)?)?;
+    let (state, lines) = Source::for_factory(&host, &factory)?.floor()?;
+    let defs: Vec<StationDef> = state.stations.iter().map(|s| parse_station(&s.data)).collect();
+    let orchestrator = orchestrator_base(state.factory.as_ref());
     let line_state = lines
         .get(&line)
         .ok_or_else(|| CommandError::Io(format!("line not found: {}", line)))?;
@@ -250,7 +239,8 @@ pub async fn show_workpiece(
     workpiece_id: String,
 ) -> Result<WorkpieceDetail, CommandError> {
     let source = Source::for_factory(&host, &factory)?;
-    let (root, lines, _, _, orchestrator) = lines_with_defs(&source)?;
+    let (state, lines) = source.floor()?;
+    let (root, orchestrator) = (state.root, orchestrator_base(state.factory.as_ref()));
     let position = resolve_position(&workpiece_id, &lines);
 
     let (folder, events, error, files) = match &position {
@@ -321,13 +311,14 @@ pub async fn list_files_in_workpiece(
         .collect())
 }
 
-// --------------------------- read_factory_env ---------------------------
+// --------------------------- factory_orchestrator ---------------------------
 
-/// The factory repo's `.env` as a flat string map, for building orchestrator
-/// links (`${ORCHESTRATOR_URL}/orgs/${ORCHESTRATOR_ORG}/work-records/<id>`).
+/// The factory's org on the orchestrator (`<url>/orgs/<org>`) from its
+/// committed `.orchestrator/factory.json`, for work-record links. Never reads
+/// `.env`: that holds the factory's secrets.
 #[tauri::command]
-pub async fn read_factory_env(host: String, factory: String) -> Result<HashMap<String, String>, CommandError> {
-    Source::for_factory(&host, &factory)?.env()
+pub async fn factory_orchestrator(host: String, factory: String) -> Result<Option<String>, CommandError> {
+    Ok(orchestrator_base(Source::for_factory(&host, &factory)?.defs()?.factory.as_ref()))
 }
 
 // --------------------------- read_file ---------------------------

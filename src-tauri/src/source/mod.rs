@@ -1,20 +1,18 @@
 // Where a factory's data comes from. Every read of a factory's filesystem goes
-// through a Source; the logic above it (monitor.rs, the commands) never
-// touches a disk, so it runs unchanged against this machine or — via the
-// bundled al-control probe over SSH — a remote host.
-//
-// The types are the probe's JSON shapes (al-control src/probe.js), so the
-// local implementation and the remote probe are interchangeable.
+// through a Source, which runs al-control's probe (source/probe.rs) on the
+// factory's host: this machine's node, or the host's over SSH. The logic above
+// it (monitor.rs, the commands) never touches a disk, and the types here are
+// the probe's JSON shapes (al-control src/probe.js).
 
-pub mod local;
+pub mod probe;
 pub mod ssh;
 
 use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::central_config::{HostEntry, FactoryEntry};
+use crate::central_config::{FactoryEntry, HostEntry};
+use crate::monitor::LineState;
 use crate::commands::CommandError;
 use crate::resolve::resolve;
 
@@ -59,24 +57,60 @@ pub struct FactoryCounts {
     pub error: Option<String>,
 }
 
-/// Counts for every factory on a host — one probe round trip for a remote
-/// host, a local scan per factory otherwise.
+/// Counts for every factory on a host, in one probe run.
 pub fn host_counts(host: &HostEntry) -> Result<HashMap<String, FactoryCounts>, CommandError> {
-    if host.is_local {
-        return Ok(host
-            .factories
-            .iter()
-            .map(|w| {
-                let root = PathBuf::from(w.abs_path.clone().unwrap_or_default());
-                let c = local::read_counts(&root)
-                    .unwrap_or_else(|e| FactoryCounts { error: Some(e.to_string()), ..Default::default() });
-                (w.name.clone(), c)
-            })
-            .collect());
-    }
     let paths: serde_json::Map<String, serde_json::Value> =
         host.factories.iter().map(|w| (w.name.clone(), serde_json::Value::from(w.path.clone()))).collect();
-    from_probe(ssh::probe(host, serde_json::json!({ "type": "counts", "paths": paths }))?)
+    from_probe(probe::probe(host, serde_json::json!({ "type": "counts", "paths": paths }))?)
+}
+
+/// The probe's per-line summary (`summarizeCounts`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LineSummary {
+    pub in_flight: u32,
+    pub stuck: u32,
+    pub finished: u32,
+    pub stuck_locations: Vec<String>,
+    pub biggest_flow: BiggestFlow,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BiggestFlow {
+    pub count: u32,
+    pub at: Option<String>,
+}
+
+/// One line from the probe's `lines` query: stations in dependency order, the
+/// terminal station, live bin counts per station (`None` = no bin dir) and the
+/// summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProbeLine {
+    pub code: String,
+    pub name: Option<String>,
+    pub stations: Vec<String>,
+    #[serde(default)]
+    pub terminal: Option<String>,
+    pub counts: HashMap<String, BTreeMap<String, Option<u32>>>,
+    pub summary: LineSummary,
+}
+
+/// Probe `defs`: station and line definitions from `.orchestrator/`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Defs {
+    pub stations: Vec<RawStationDef>,
+    pub lines: serde_json::Map<String, serde_json::Value>,
+    #[serde(default)]
+    pub factory: Option<serde_json::Value>,
+}
+
+/// Probe `lines`: every line of a factory, counts only (no workpiece ids).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Lines {
+    pub root: String,
+    pub lines: HashMap<String, ProbeLine>,
+    /// `.orchestrator/factory.json` (`orchestrator_url`, `org`).
+    #[serde(default)]
+    pub factory: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,10 +163,11 @@ pub struct FileContent {
     pub is_binary: bool,
 }
 
-pub enum Source {
-    Local { root: PathBuf },
-    /// `path` as written in the config; `~` is resolved on the host.
-    Ssh { host: HostEntry, path: String },
+/// One factory on one host. `path` is as written in the config; the probe
+/// resolves `~` on the host.
+pub struct Source {
+    host: HostEntry,
+    path: String,
 }
 
 impl Source {
@@ -143,28 +178,55 @@ impl Source {
     }
 
     pub fn for_entry(host: &HostEntry, factory: &FactoryEntry) -> Source {
-        match &factory.abs_path {
-            Some(p) if host.is_local => Source::Local { root: PathBuf::from(p) },
-            _ => Source::Ssh { path: factory.path.clone(), host: host.clone() },
-        }
+        Source { host: host.clone(), path: factory.path.clone() }
     }
 
-    fn probe(&self, query: serde_json::Value) -> Result<serde_json::Value, CommandError> {
-        match self {
-            Source::Ssh { host, .. } => ssh::probe(host, query),
-            Source::Local { .. } => unreachable!("local sources read the disk directly"),
-        }
+    fn query(&self, mut query: serde_json::Value) -> Result<serde_json::Value, CommandError> {
+        query["path"] = self.path.clone().into();
+        probe::probe(&self.host, query)
     }
 
     pub fn is_local(&self) -> bool {
-        matches!(self, Source::Local { .. })
+        self.host.is_local
     }
 
     pub fn state(&self) -> Result<RawState, CommandError> {
-        match self {
-            Source::Local { root } => local::read_state(root),
-            Source::Ssh { path, .. } => from_probe(self.probe(serde_json::json!({ "type": "state", "path": path }))?),
-        }
+        from_probe(self.query(serde_json::json!({ "type": "state" }))?)
+    }
+
+    pub fn defs(&self) -> Result<Defs, CommandError> {
+        from_probe(self.query(serde_json::json!({ "type": "defs" }))?)
+    }
+
+    /// `lines` and `defs` (station and line definitions, no bin scan) from one
+    /// probe run: what the line views need.
+    pub fn lines_with_defs(&self) -> Result<(Lines, Defs), CommandError> {
+        let mut out = probe::probe_all(
+            &self.host,
+            &[
+                serde_json::json!({ "type": "lines", "path": self.path }),
+                serde_json::json!({ "type": "defs", "path": self.path }),
+            ],
+        )?;
+        let defs: Defs = from_probe(out.pop().unwrap())?;
+        let lines: Lines = from_probe(out.pop().unwrap())?;
+        Ok((lines, defs))
+    }
+
+    /// `state` and `lines` from one probe run, joined into line states with
+    /// workpiece ids.
+    pub fn floor(&self) -> Result<(RawState, HashMap<String, LineState>), CommandError> {
+        let mut out = probe::probe_all(
+            &self.host,
+            &[
+                serde_json::json!({ "type": "state", "path": self.path }),
+                serde_json::json!({ "type": "lines", "path": self.path }),
+            ],
+        )?;
+        let lines: Lines = from_probe(out.pop().unwrap())?;
+        let state: RawState = from_probe(out.pop().unwrap())?;
+        let joined = crate::monitor::join_lines(&state, &lines);
+        Ok((state, joined))
     }
 
     /// Parsed `log.jsonl` per workpiece dir (relative to temp/stations/),
@@ -173,12 +235,7 @@ impl Source {
         if dirs.is_empty() {
             return Ok(HashMap::new());
         }
-        match self {
-            Source::Local { root } => local::read_logs(root, dirs),
-            Source::Ssh { path, .. } => {
-                from_probe(self.probe(serde_json::json!({ "type": "logs", "path": path, "dirs": dirs }))?["logs"].take())
-            }
-        }
+        from_probe(self.query(serde_json::json!({ "type": "logs", "dirs": dirs }))?["logs"].take())
     }
 
     /// Last activity (ms since epoch) per workpiece dir: the later of the
@@ -187,12 +244,7 @@ impl Source {
         if dirs.is_empty() {
             return Ok(HashMap::new());
         }
-        match self {
-            Source::Local { root } => local::read_ages(root, dirs),
-            Source::Ssh { path, .. } => {
-                from_probe(self.probe(serde_json::json!({ "type": "ages", "path": path, "dirs": dirs }))?["ages"].take())
-            }
-        }
+        from_probe(self.query(serde_json::json!({ "type": "ages", "dirs": dirs }))?["ages"].take())
     }
 
     /// error.json summaries per dir; `None` where there's none.
@@ -200,84 +252,55 @@ impl Source {
         if dirs.is_empty() {
             return Ok(HashMap::new());
         }
-        match self {
-            Source::Local { root } => local::read_errors(root, dirs),
-            Source::Ssh { path, .. } => {
-                from_probe(self.probe(serde_json::json!({ "type": "errors", "path": path, "dirs": dirs }))?["errors"].take())
-            }
-        }
+        from_probe(self.query(serde_json::json!({ "type": "errors", "dirs": dirs }))?["errors"].take())
     }
 
-    /// Delete workpiece dirs. The source re-checks every one and refuses the
+    /// Delete workpiece dirs. The probe re-checks every one and refuses the
     /// whole batch (`CommandError::Refused`) before deleting anything if one
     /// isn't a workpiece in a `done` / `output` bin, or is in `keep`.
     pub fn remove(&self, dirs: &[String], keep: &[String]) -> Result<usize, CommandError> {
         if dirs.is_empty() {
             return Ok(0);
         }
-        match self {
-            Source::Local { root } => local::remove_workpieces(root, dirs, keep),
-            Source::Ssh { path, .. } => {
-                let out = self.probe(serde_json::json!({ "type": "remove", "path": path, "dirs": dirs, "keep": keep }))?;
-                Ok(out["removed"].as_array().map_or(0, |a| a.len()))
-            }
-        }
+        let out = self.query(serde_json::json!({ "type": "remove", "dirs": dirs, "keep": keep }))?;
+        Ok(out["removed"].as_array().map_or(0, |a| a.len()))
     }
 
     /// Move workpiece dirs back to their station's `input` for a retry. The
-    /// source re-checks every one and refuses the whole batch before moving
+    /// probe re-checks every one and refuses the whole batch before moving
     /// anything if one isn't a workpiece in a `failed` / `done` bin, or its
     /// `input/<id>` is taken.
     pub fn requeue(&self, dirs: &[String]) -> Result<usize, CommandError> {
         if dirs.is_empty() {
             return Ok(0);
         }
-        match self {
-            Source::Local { root } => local::requeue_workpieces(root, dirs),
-            Source::Ssh { path, .. } => {
-                let out = self.probe(serde_json::json!({ "type": "requeue", "path": path, "dirs": dirs }))?;
-                Ok(out["requeued"].as_array().map_or(0, |a| a.len()))
-            }
-        }
+        let out = self.query(serde_json::json!({ "type": "requeue", "dirs": dirs }))?;
+        Ok(out["requeued"].as_array().map_or(0, |a| a.len()))
     }
 
     pub fn workpiece(&self, dir: &str) -> Result<WorkpieceFiles, CommandError> {
-        match self {
-            Source::Local { root } => local::read_workpiece(root, dir),
-            Source::Ssh { path, .. } => from_probe(self.probe(serde_json::json!({ "type": "workpiece", "path": path, "dir": dir }))?),
-        }
+        from_probe(self.query(serde_json::json!({ "type": "workpiece", "dir": dir }))?)
     }
 
-    /// A file in the factory repo, by path relative to its root.
+    /// A workpiece file, by path relative to the factory root. The probe reads
+    /// inside temp/stations/ only, given a dir and a file in it:
+    /// `temp/stations/S/B/rest` → dir `S/B`, file `rest`.
     pub fn read_file(&self, file_path: &str) -> Result<FileContent, CommandError> {
-        match self {
-            Source::Local { root } => local::read_file(root, file_path),
-            Source::Ssh { path, .. } => {
-                // The probe reads inside temp/stations/ only, given a dir and a
-                // file in it: `temp/stations/S/B/rest` → dir `S/B`, file `rest`.
-                let rel = file_path.strip_prefix("temp/stations/").ok_or_else(|| {
-                    CommandError::Io(format!("Only workpiece files can be read on a remote host: {}", file_path))
-                })?;
-                let mut parts = rel.splitn(3, '/');
-                let (Some(station), Some(bin), Some(file)) = (parts.next(), parts.next(), parts.next()) else {
-                    return Err(CommandError::Io(format!("Not a workpiece file: {}", file_path)));
-                };
-                let data = self.probe(serde_json::json!({
-                    "type": "read", "path": path, "dir": format!("{}/{}", station, bin), "file": file
-                }))?;
-                Ok(file_content_from_probe(&data))
-            }
-        }
+        let (dir, file) = split_workpiece_file(file_path)?;
+        Ok(file_content_from_probe(&self.query(serde_json::json!({ "type": "read", "dir": dir, "file": file }))?))
     }
+}
 
-    /// The factory's `.env` (used for orchestrator links).
-    pub fn env(&self) -> Result<HashMap<String, String>, CommandError> {
-        match self {
-            Source::Local { root } => local::read_env(root),
-            // The probe deliberately doesn't read a factory's environment.
-            Source::Ssh { .. } => Ok(HashMap::new()),
-        }
-    }
+/// `temp/stations/S/B/rest` → (`S/B`, `rest`), the probe's `read` arguments.
+pub fn split_workpiece_file(file_path: &str) -> Result<(String, String), CommandError> {
+    let rel = file_path
+        .strip_prefix("temp/stations/")
+        .ok_or_else(|| CommandError::Io(format!("Only workpiece files can be read: {}", file_path)))?;
+    let mut parts = rel.splitn(3, '/');
+    let (Some(station), Some(bin), Some(file)) = (parts.next(), parts.next(), parts.next()) else {
+        return Err(CommandError::Io(format!("Not a workpiece file: {}", file_path)));
+    };
+    Ok((format!("{}/{}", station, bin), file.to_string()))
 }
 
 fn from_probe<T: serde::de::DeserializeOwned>(v: serde_json::Value) -> Result<T, CommandError> {
@@ -304,18 +327,17 @@ fn file_content_from_probe(data: &serde_json::Value) -> FileContent {
 mod remote {
     use super::*;
 
-    /// `cargo test -- --ignored remote_source --nocapture` — every factory on
-    /// every remote host in the developer's config, through the SSH source.
+    /// `cargo test -- --ignored every_configured_factory --nocapture` — every
+    /// factory on every host in the developer's config, through the probe.
     #[test]
     #[ignore]
-    fn remote_source_reads_every_remote_factory() {
+    fn every_configured_factory_reads_through_the_probe() {
         let cfg = crate::central_config::load().unwrap().expect("config");
-        for h in cfg.hosts.iter().filter(|h| !h.is_local) {
+        for h in &cfg.hosts {
             for w in &h.factories {
                 let started = std::time::Instant::now();
                 let src = Source::for_factory(&h.name, &w.name).unwrap();
-                let state = src.state().unwrap();
-                let lines = crate::monitor::build_lines(&state);
+                let (state, lines) = src.floor().unwrap();
                 let failed: Vec<String> = state
                     .bins
                     .iter()
@@ -355,8 +377,7 @@ mod soak {
         let factory = std::env::var("CR_TEST_FACTORY").expect("CR_TEST_FACTORY");
         let src = Source::for_factory(&host, &factory).unwrap();
         for i in 0..40 {
-            let s = src.state().unwrap();
-            let lines = crate::monitor::build_lines(&s);
+            let (_, lines) = src.floor().unwrap();
             if i % 5 == 0 {
                 println!("state #{:<3} {} lines  rss {} MB", i, lines.len(), rss_mb());
             }
@@ -387,5 +408,50 @@ mod counts_timing {
                 println!("{:<14} {} factories  {:>4} failed  {:?}", h.name, c.len(), failed, t.elapsed());
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub mod fixtures {
+    use std::path::{Path, PathBuf};
+
+    /// A Source on this machine for a factory at `root`.
+    pub fn local_source(root: &Path) -> super::Source {
+        let host = crate::central_config::HostEntry { name: "local".into(), is_local: true, ssh: None, node: None, factories: vec![] };
+        super::Source { host, path: root.display().to_string() }
+    }
+
+    /// A throwaway factory: line VM (VM1 → VM2, terminal VM2), an off-line
+    /// station X1, a broken station file, and three workpieces.
+    pub fn make_factory() -> PathBuf {
+        // Parallel tests can read the same clock tick; the counter keeps names unique.
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let root = std::env::temp_dir().join(format!(
+            "control-room-factory-{}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        let st = root.join(".orchestrator").join("stations");
+        std::fs::create_dir_all(&st).unwrap();
+        std::fs::write(st.join("VM1__a.json"), r#"{"id":"id1","short_code":"VM1","line":"VM","dependencies":[]}"#).unwrap();
+        std::fs::write(st.join("VM2__b.json"), r#"{"id":"id2","short_code":"VM2","line":"VM","dependencies":["id1"]}"#).unwrap();
+        std::fs::write(st.join("X1.json"), r#"{"id":"idx","short_code":"X1"}"#).unwrap();
+        std::fs::write(st.join("broken.json"), "{not json").unwrap();
+        let lines = root.join(".orchestrator").join("lines");
+        std::fs::create_dir_all(&lines).unwrap();
+        std::fs::write(lines.join("VM.json"), r#"{"code":"VM","name":"Vendor"}"#).unwrap();
+        let wp = |rel: &str, log: Option<&str>| {
+            let d = root.join("temp").join("stations").join(rel);
+            std::fs::create_dir_all(&d).unwrap();
+            std::fs::write(d.join("pointer.json"), "{}").unwrap();
+            if let Some(l) = log {
+                std::fs::write(d.join("log.jsonl"), l).unwrap();
+            }
+        };
+        wp("VM1/output/wp-1", Some("{\"ts\":\"2026-01-01T00:00:00Z\",\"station\":\"VM1\",\"event\":\"station_complete\"}\n\nnot json\n"));
+        wp("VM2/output/inv/wp-2", None);
+        std::fs::create_dir_all(root.join("temp/stations/VM2/failed")).unwrap();
+        root
     }
 }

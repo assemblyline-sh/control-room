@@ -18,7 +18,14 @@ stay in that repo.
 - Reads Assembly Line factories: al-control's config, `~/.assemblyline/al-control/config.yml`
   (hosts → `factories`), its SSH socket dir, `.orchestrator/factory.json`, and detects
   `@assemblyline/lib-factory`. Factory vocabulary throughout.
-- Bundles al-control 0.3.0's probe.
+- Runs al-control's probe for every host, this machine included (al-control decision 0006):
+  local reads no longer go through a Rust port. Line order, terminal stations and line
+  summaries come from the probe's `lines` query. On this machine the probe runs with the local
+  host's `node:` or the login shell's `node`, so the app finds node and pm2 when opened from the
+  Finder too.
+- Bundles al-control 0.3.0's probe; `npm run check:probe` and CI fail if the copy differs.
+- Work-record links in a `log.jsonl` come from `.orchestrator/factory.json`, and a `local-` run
+  is not linked.
 
 ### Fixed
 
@@ -28,3 +35,7 @@ stay in that repo.
 ### Removed
 
 - The one-time import of fob-watch's old `config.json`.
+- `read_worker_env`: the app no longer reads a factory's `.env`, which sent its secrets to the
+  webview.
+- `source/local.rs` and the Rust line model (`topo_sort_stations`, `compute_terminal`,
+  `build_lines`, `summarize_line`).

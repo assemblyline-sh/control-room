@@ -4,7 +4,7 @@ Guidance for Claude Code (claude.ai/code) working in this repo.
 
 ## Project Overview
 
-`control-room` is a Tauri 2 + Next.js desktop app — the "Lens" to the al-control CLI's "kubectl". It reads the same config, `~/.assemblyline/al-control/config.yml` (hosts → factories), shows one host at a time, and renders factory-floor state for that host's `factory-*` repos: read straight from disk in Rust for `local`, or through al-control's probe piped over `ssh` for a remote host. No Node or CLI is needed on the user's machine. The UI is a VS Code-style three-pane shell: tree rail on the left, tab strip + per-resource view on the right. See `README.md` for the product overview and `docs/wip/fork-and-reshape.md` for the fork from fob-watch (FinOpsBricks), whose history holds the design log of everything below.
+`control-room` is a Tauri 2 + Next.js desktop app — the "Lens" to the al-control CLI's "kubectl". It reads the same config, `~/.assemblyline/al-control/config.yml` (hosts → factories), shows one host at a time, and renders factory-floor state for that host's `factory-*` repos: through al-control's probe, run with this machine's `node` for `local` or piped over `ssh` for a remote host. It needs `node` on the user's machine (every machine that runs a factory has it) but no CLI install. The UI is a VS Code-style three-pane shell: tree rail on the left, tab strip + per-resource view on the right. See `README.md` for the product overview and `docs/wip/fork-and-reshape.md` for the fork from fob-watch (FinOpsBricks), whose history holds the design log of everything below.
 
 ## Related repositories
 
@@ -21,14 +21,16 @@ React (Next.js, static export)
    ↓ invoke(...)
 Tauri 2 Rust commands — every factory command takes (host, factory name)
    ├── commands.rs + central_config.rs     ~/.assemblyline/al-control/config.yml: load / add / remove;
-   │                                       legacy config.json import; pick_folder
+   │                                       pick_folder
    ├── resolve.rs                          (host, factory) → config entries, on every call
    ├── monitor_commands.rs                 lines / stations / bins / workpieces / files
-   │     ↓ Source (source/mod.rs) — probe-shaped data (RawState, logs, workpiece, read)
-   │     ├── source/local.rs               Rust port of probe.js's reads (local host)
-   │     └── source/ssh.rs                 probe.js over `ssh … node -` (remote hosts);
+   │     ↓ Source (source/mod.rs) — probe-shaped data (RawState, Lines, logs, workpiece, read)
+   │     ├── source/probe.rs               al-control's probe on every host: this machine's node, or
+   │     │                                 the host's; several queries per run (`probe_all`)
+   │     └── source/ssh.rs                 `ssh … node -` for remote hosts (also pm2, terminal);
    │                                       emits "ssh-stderr" / "ssh-call" events
-   │   monitor.rs                          pure line-state logic over RawState
+   │   monitor.rs                          joins the probe's `lines` (order, terminal) with
+   │                                       `state`'s bins; positions, events, links
    ├── failures.rs                         error_key (al-control errorKey parity) + list_failures
    ├── housekeeping.rs                     plan_clear (scopes + filter → bins, skips, ages)
    │                                       clear_workpieces (re-plans, refuses, then Source::remove)
@@ -43,11 +45,11 @@ Tauri 2 Rust commands — every factory command takes (host, factory name)
                                            ("pm2-log" events keyed host/factory)
 ```
 
-**Data rule:** nothing above `source/` touches a disk. Add a query to `Source` with a local implementation *and* the probe call; the types are the probe's JSON shapes. `source/local.rs` has an `#[ignore]`d parity test that runs al-control's probe with node on every local factory — run it after changing either side (`cargo test -- --ignored probe_parity`).
+**Data rule:** nothing above `source/` touches a factory's disk, and nothing in `source/` reads one except through the probe (al-control decision 0006). `src-tauri/resources/probe.js` is al-control's `src/probe.js` at the version pinned in `package.json`, byte for byte: never edit it here. A change goes to al-control first, then bump the pin and `npm run check:probe -- --copy`; CI fails on any difference. Station order, terminal stations and line summaries come from the probe's `lines` query; don't port them to Rust. On this machine the probe runs with the local host's `node:` from the config, else the login shell's `node` (`probe::local_node`), with that node's directory first on PATH so the probe's `pm2 jlist` finds pm2. Two exceptions read local files directly, containment-checked in `host_commands.rs`: `fetch_file` and `read_file_bytes` hand a local workpiece file to the OS or the media view.
 
-**Clear rule:** the only delete is `clear_workpieces`, and it goes through three checks: the plan (`done` anywhere, a terminal `output`; not in the factory's config `keep`; not a `lib-factory:move_files` source_bin), a re-plan from fresh state in `clear_workpieces` that refuses any dir not clearable *now* (never trust the dirs JS sends), and the source's own `remove` (local.rs / the probe: under temp/stations, done/output, not kept, has pointer.json). Keep these in step with al-control's `workpieces clear` and its decision 0005. Every UI entry point opens `ClearDialog` via `useClear()` (`src/state/clear-context.jsx`); after a clear it bumps `src/state/data-epoch.js`, which marks every cached `useFetcher` entry stale.
+**Clear rule:** the only delete is `clear_workpieces`, and it goes through three checks: the plan (`done` anywhere, a terminal `output`; not in the factory's config `keep`; not a `lib-factory:move_files` source_bin), a re-plan from fresh state in `clear_workpieces` that refuses any dir not clearable *now* (never trust the dirs JS sends), and the probe's own `remove` (under temp/stations, done/output, not kept, has pointer.json). Keep these in step with al-control's `workpieces clear` and its decision 0005. Every UI entry point opens `ClearDialog` via `useClear()` (`src/state/clear-context.jsx`); after a clear it bumps `src/state/data-epoch.js`, which marks every cached `useFetcher` entry stale.
 
-**Retry rule:** the only move is `requeue_workpieces`. A workpiece goes from a station's `failed` or `done` bin to **that same station's** `input`, flat at `input/<id>` (lib-factory reads input flat). Like clear, it has three layers: `canRetry` in `src/lib/retry.js` gates the rail's drop target and menu items; the command resolves ids against fresh state (JS sends ids, never paths); and the source re-checks before moving anything (local.rs `requeue_workpieces` / the probe's `requeue`: normalised path in `failed`/`done`, has pointer.json, `input/<id>` free). The move deletes `error.json`/`error.txt` and appends a `requeued` event to `log.jsonl`. No orchestrator run is triggered: lib-factory's bin-watch fires on a station's own input backlog, and cron'd stations pick it up on their next tick. A retry from `done` asks first..
+**Retry rule:** the only move is `requeue_workpieces`. A workpiece goes from a station's `failed` or `done` bin to **that same station's** `input`, flat at `input/<id>` (lib-factory reads input flat). Like clear, it has three layers: `canRetry` in `src/lib/retry.js` gates the rail's drop target and menu items; the command resolves ids against fresh state (JS sends ids, never paths); and the source re-checks before moving anything (the probe's `requeue`: normalised path in `failed`/`done`, has pointer.json, `input/<id>` free). The move deletes `error.json`/`error.txt` and appends a `requeued` event to `log.jsonl`. No orchestrator run is triggered: lib-factory's bin-watch fires on a station's own input backlog, and cron'd stations pick it up on their next tick. A retry from `done` asks first..
 
 **Error keys** must match al-control's: `failures.rs` has its test vectors and an `#[ignore]`d `error_key_parity` test that runs al-control's `errorKey` with node over every real failure.
 
@@ -68,7 +70,8 @@ UI shape: `src/app/page.jsx` boots config and renders `<Shell />`. `Shell` owns 
 | `npm run dev` | Next.js only (browser-only; `invoke()` will throw) |
 | `npm run typecheck` | `tsc -p jsconfig.json` (uses `@ts-check` headers) |
 | `npm run lint` / `npm run format` | ESLint CLI (`eslint.config.mjs`, flat config) / Prettier |
-| `cargo test -- --ignored probe_parity` / `error_key_parity` / `plan_every_host` | Real-data checks against al-control (in `src-tauri`) |
+| `npm run check:probe` | The bundled probe is al-control's, byte for byte (`-- --copy` to update it after bumping the pin) |
+| `cargo test -- --ignored error_key_parity` / `plan_every_host` / `every_configured_factory` / `counts_timing` | Real-data checks against your config (in `src-tauri`) |
 | `CR_UI_FIXTURES=… cargo test -- --ignored dump_ui_fixtures` | Fixtures for rendering the UI in a browser with `scripts/browser-mock.js` |
 
 ## Engineering standards applied

@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "format": "prettier --write '**/*.{js,jsx,json,css,md}'",
     "typecheck": "tsc -p jsconfig.json",
+    "check:probe": "node scripts/check-probe.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
@@ -29,6 +30,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@assemblyline/al-control": "0.3.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@tauri-apps/cli": "^2.1.0",
     "@types/react": "^19.3.0",

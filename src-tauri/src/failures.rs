@@ -7,7 +7,6 @@
 use serde::Serialize;
 
 use crate::commands::CommandError;
-use crate::monitor::build_lines;
 use crate::resolve::resolve_scope;
 use crate::source::{ErrorSummary, Source};
 
@@ -175,8 +174,7 @@ pub async fn list_failures(host: String, factory: Option<String>) -> Result<Vec<
 }
 
 fn factory_failures(source: &Source) -> Result<Vec<Failure>, CommandError> {
-    let state = source.state()?;
-    let lines = build_lines(&state);
+    let (state, lines) = source.floor()?;
     let mut found: Vec<(String, String, String, String, bool)> = Vec::new();
     let mut codes: Vec<&String> = lines.keys().collect();
     codes.sort();

@@ -1,6 +1,6 @@
 # Fork fob-watch into control-room
 
-## Status: IN PROGRESS (~30%)
+## Status: IN PROGRESS (~65%)
 
 control-room is the desktop window onto Assembly Line factory floors, forked from fob-watch
 0.6.0 with a fresh history. It reads al-control's config, runs al-control's probe for every
@@ -62,13 +62,19 @@ none of fob-factory's guards.
 - [ ] Public repo
       `assemblyline-sh/control-room`, pushed
 
-### Phase 2: The probe for every host ❌
-- [ ] `Source::Local` runs the probe with this machine's `node`; delete `source/local.rs`
-- [ ] Line views from the `lines` query; drop `topo_sort_stations`, `compute_terminal`,
-      `build_lines`, `summarize_line` from `monitor.rs`
-- [ ] Orchestrator links from `factory.json`; delete `read_worker_env`
-- [ ] Measure the rail's 2-second `counts` poll on this machine (it now spawns `node`)
-- [ ] `scripts/check-probe.js` and a CI workflow: byte check, `cargo test`, typecheck, lint
+### Phase 2: The probe for every host ✅
+- [x] One probe-backed `Source` for every host (`source/probe.rs`): this machine's `node` (the
+      local host's `node:`, else the login shell's), with its dir first on PATH for pm2; several
+      queries share one run (`probe_all`), so `state` + `lines` is one node start or one round
+      trip. `source/local.rs` deleted
+- [x] Line views from `lines` + `defs`; failures, clear and positions from `state` joined with
+      `lines` (`monitor::join_lines`). `topo_sort_stations`, `compute_terminal`, `build_lines`,
+      `summarize_line` deleted
+- [x] Orchestrator links from `factory.json` (`factory_orchestrator`); `read_worker_env` deleted
+- [x] Rail `counts` poll on this machine: ~45 ms per tick through node (alex-linux-pc ~150–240
+      ms over SSH, unchanged). Clear plans on every factory and 328 error keys unchanged
+- [x] `scripts/check-probe.mjs` (`npm run check:probe`, pinned `@assemblyline/al-control`
+      0.3.0) and `.github/workflows/ci.yml`: byte check, typecheck, lint, `cargo test`
 
 ### Phase 3: pm2 parity ❌
 - [ ] Start refuses when the factory already runs (pm2 or direct); stop refuses when it isn't
@@ -85,8 +91,8 @@ none of fob-factory's guards.
 
 ## Related Files
 
-- `src-tauri/src/source/` - where a factory's data comes from (local disk now, probe later)
-- `src-tauri/src/monitor.rs` - line model (to go) and display helpers
+- `src-tauri/src/source/` - where a factory's data comes from: the probe, on every host
+- `src-tauri/src/monitor.rs` - joins the probe's line model with bins; display helpers
 - `src-tauri/src/housekeeping.rs` - clear planner and conveyor guard
 - `src-tauri/src/pm2.rs` - start, stop, status, log tail
 - `src-tauri/src/central_config.rs` - the shared config file
