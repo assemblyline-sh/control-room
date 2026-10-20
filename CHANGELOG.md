@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `install.sh`: install or update the macOS app with one `curl` command. A `curl` download isn't
   quarantined, so it opens without the "Not Opened" dialog until the build is notarized.
 
+### Fixed
+
+- A factory started or restarted from the app gets the PATH of a normal shell session: pm2
+  runs in the user's login shell, on this machine and over SSH, so `~/.local/bin` (claude),
+  Homebrew and the like are there. Before, an app opened from the Finder, or a remote host's
+  non-login SSH shell, gave the factory a bare PATH, and a step calling `claude` failed with
+  ENOENT. Same change as al-control 0.3.1.
+- Restart passes `--update-env`, so it picks up the current environment.
+- Start and restart run `pm2 save`, so the host brings the factory back after a reboot.
+
 ### Changed
 
 - README: the install script, and clearing the quarantine flag as the temporary fix for a

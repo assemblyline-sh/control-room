@@ -45,7 +45,9 @@ Tauri 2 Rust commands — every factory command takes (host, factory name)
                                            ssh ("pm2-log" events keyed host/factory). The probe's
                                            `factories` query finds the process (pm2 or direct); start
                                            refuses a running factory, stop / restart refuse one not
-                                           under pm2 — al-control's `procs` guards
+                                           under pm2 — al-control's `procs` guards. pm2 runs in the
+                                           user's login shell (`ssh::pm2_command`), so a factory gets
+                                           a full PATH; start / restart end with `pm2 save`
 ```
 
 **Data rule:** nothing above `source/` touches a factory's disk, and nothing in `source/` reads one except through the probe (al-control decision 0006). `src-tauri/resources/probe.js` is al-control's `src/probe.js` at the version pinned in `package.json`, byte for byte: never edit it here. A change goes to al-control first, then bump the pin and `npm run check:probe -- --copy`; CI fails on any difference. Station order, terminal stations and line summaries come from the probe's `lines` query; don't port them to Rust. On this machine the probe runs with the local host's `node:` from the config, else the login shell's `node` (`probe::local_node`), with that node's directory first on PATH so the probe's `pm2 jlist` finds pm2. Two exceptions read local files directly, containment-checked in `host_commands.rs`: `fetch_file` and `read_file_bytes` hand a local workpiece file to the OS or the media view.

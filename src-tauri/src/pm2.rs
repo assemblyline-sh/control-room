@@ -87,26 +87,21 @@ impl Target {
         Ok(Inspect { main: w["main"].as_str().map(String::from), pm2_found: data["pm2_found"] == true, root, pm2_name, running })
     }
 
-    /// Run `pm2 <args>` (from `cwd` when given); returns stdout. Local runs put
-    /// this machine's node first on PATH; remote runs go through `ssh` with the
-    /// host's `node:` dir on PATH.
+    /// Run `pm2 <args>` (from `cwd` when given) in the user's login shell, so
+    /// a factory it starts gets a full PATH (`ssh::pm2_command`); returns
+    /// stdout. Local runs go through this machine's shell, remote runs through
+    /// `ssh`.
     fn run(&self, args: &[&str], cwd: Option<&str>) -> Result<Vec<u8>, CommandError> {
         let host = &self.host;
         if host.is_local {
-            let mut cmd = local_pm2(host);
-            cmd.args(args);
-            if let Some(dir) = cwd {
-                cmd.current_dir(dir);
+            let out = local_pm2(host, args, cwd).output().map_err(map_pm2_spawn_error)?;
+            match out.status.code() {
+                Some(0) => return Ok(out.stdout),
+                Some(127) => return Err(CommandError::Pm2("pm2 not found — install with `npm i -g pm2`".into())),
+                _ => return Err(CommandError::Pm2(format!("pm2 {} exited with status {}", args[0], out.status))),
             }
-            let out = cmd.output().map_err(map_pm2_spawn_error)?;
-            if !out.status.success() {
-                return Err(CommandError::Pm2(format!("pm2 {} exited with status {}", args[0], out.status)));
-            }
-            return Ok(out.stdout);
         }
-        let cd = cwd.map(|d| format!("cd {} && ", ssh::shell_quote(d))).unwrap_or_default();
-        let quoted: Vec<String> = args.iter().map(|a| ssh::shell_quote(a)).collect();
-        let remote_cmd = format!("{}{}pm2 {}", cd, ssh::env_prefix(host), quoted.join(" "));
+        let remote_cmd = ssh::pm2_command(host, "pm2", args, cwd);
         let (code, out, err) = ssh::run(host, &remote_cmd, "")?;
         match code {
             0 => Ok(out),
@@ -120,13 +115,19 @@ impl Target {
     }
 }
 
-/// `pm2` on this machine: the one next to the node the probe uses (an app
-/// opened from the Finder has a bare PATH), else whatever is on PATH.
-fn local_pm2(host: &HostEntry) -> Command {
+/// `pm2 <args>` on this machine, in the user's login shell: an app opened
+/// from the Finder has a bare PATH, and a factory started from it would get
+/// that PATH. pm2 is the one next to the node the probe uses, else whatever
+/// the login shell finds.
+fn local_pm2(host: &HostEntry, args: &[&str], cwd: Option<&str>) -> Command {
     let node = probe::local_node(host);
     let beside = std::path::Path::new(&node).with_file_name("pm2");
-    let program = if beside.is_file() { beside.display().to_string() } else { "pm2".to_string() };
-    probe::with_node_path(Command::new(program), &node)
+    let program = if beside.is_file() { ssh::shell_quote(&beside.display().to_string()) } else { "pm2".to_string() };
+    let local = HostEntry { node: Some(node), ..host.clone() };
+    let shell = std::env::var("SHELL").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "/bin/sh".into());
+    let mut cmd = Command::new(shell);
+    cmd.args(["-lc", &ssh::pm2_inner(&local, &program, args, cwd)]);
+    cmd
 }
 
 /// The local host from the config, or a bare one before there is a config.
@@ -195,7 +196,7 @@ fn map_pm2_spawn_error(e: std::io::Error) -> CommandError {
 
 #[tauri::command]
 pub async fn check_pm2_available() -> Result<bool, CommandError> {
-    match local_pm2(&local_host()).arg("--version").stdout(Stdio::null()).stderr(Stdio::null()).status() {
+    match local_pm2(&local_host(), &["--version"], None).stdout(Stdio::null()).stderr(Stdio::null()).status() {
         Ok(status) => Ok(status.success()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(e) => Err(CommandError::Pm2(e.to_string())),
@@ -211,6 +212,15 @@ pub async fn factory_start(host: String, factory: String) -> Result<(), CommandE
     // `cwd` on the `pm2 start` itself is the single source of truth for the
     // process's `pm_cwd` — what `cd <dir> && pm2 start` would give.
     t.run(&["start", main, "--name", &i.pm2_name], Some(&i.root))?;
+    save(&t)
+}
+
+/// `pm2 save`, so the host's pm2 brings the factory back after a reboot with
+/// the environment it runs with now (al-control's `procs start` / `restart`
+/// do the same). Stop doesn't save, and wouldn't help: pm2 resurrects every
+/// saved app, stopped or not.
+fn save(t: &Target) -> Result<(), CommandError> {
+    t.run(&["save"], None)?;
     Ok(())
 }
 
@@ -228,8 +238,10 @@ pub async fn factory_stop(host: String, factory: String) -> Result<(), CommandEr
 pub async fn factory_restart(host: String, factory: String) -> Result<(), CommandError> {
     let t = target(&host, &factory)?;
     let i = t.inspect()?;
-    t.run(&["restart", check_managed(&i, &factory, &host)?], None)?;
-    Ok(())
+    // --update-env: without it pm2 restarts with the environment saved at the
+    // first start, so a PATH change never reaches the factory.
+    t.run(&["restart", check_managed(&i, &factory, &host)?, "--update-env"], None)?;
+    save(&t)
 }
 
 #[derive(Serialize)]
@@ -275,14 +287,13 @@ pub async fn start_log_tail(
         }
     }
 
+    // Both run `exec pm2`, so killing the child stops pm2 itself.
+    let args = ["logs", name.as_str(), "--raw"];
     let mut cmd = if t.host.is_local {
-        let mut c = local_pm2(&t.host);
-        c.args(["logs", &name, "--raw"]);
-        c
+        local_pm2(&t.host, &args, None)
     } else {
         let mut c = Command::new("ssh");
-        c.args(ssh::ssh_args(&t.host, false))
-            .arg(format!("{}pm2 logs {} --raw", ssh::env_prefix(&t.host), ssh::shell_quote(&name)));
+        c.args(ssh::ssh_args(&t.host, false)).arg(ssh::pm2_command(&t.host, "pm2", &args, None));
         c
     };
     let mut child = cmd
