@@ -75,7 +75,7 @@ export function useCountsPoller(host) {
 }
 
 /**
- * @typedef {{ done: number, failed: number, output: number }} Totals
+ * @typedef {{ input: number, doing: number, failed: number, output: number, done: number }} Totals
  */
 
 /**
@@ -99,13 +99,15 @@ function select(r) {
   if (r.type !== "factory" && r.type !== "line" && r.type !== "station") return null;
 
   /** @type {Totals} */
-  const t = { done: 0, failed: 0, output: 0 };
+  const t = { input: 0, doing: 0, failed: 0, output: 0, done: 0 };
   for (const [station, bins] of Object.entries(w.counts)) {
     if (r.type === "line" && w.lines[station] !== r.line) continue;
     if (r.type === "station" && station !== r.station) continue;
-    t.done += bins.done ?? 0;
+    t.input += bins.input ?? 0;
+    t.doing += bins.doing ?? 0;
     t.failed += (bins.failed ?? 0) + (orphans[station] ?? 0);
     t.output += bins.output ?? 0;
+    t.done += bins.done ?? 0;
   }
   return t;
 }

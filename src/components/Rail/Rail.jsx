@@ -4,6 +4,7 @@
 import { useState } from "react";
 import AddHostForm from "@/components/Rail/AddHostForm";
 import AddRemoteFactoryForm from "@/components/Rail/AddRemoteFactoryForm";
+import CountBinsPicker from "@/components/Rail/CountBinsPicker";
 import TreeNode from "@/components/Rail/TreeNode";
 import { openHostWindow, showError } from "@/lib/tauri-api";
 import { useConfig } from "@/state/config-context";
@@ -94,6 +95,7 @@ export default function Rail({ onAddFactory }) {
       </div>
       <div style={headerRowStyle}>
         <span style={headerStyle}>FACTORIES</span>
+        <CountBinsPicker />
       </div>
       <div style={treeStyle}>
         {host.factories.length === 0 && <p style={emptyStyle}>No factories on {host.name}.</p>}

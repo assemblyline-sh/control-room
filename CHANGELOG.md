@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pick which bin counts the rail's factory, line and station rows show: the menu next to
+  FACTORIES has a checkbox per bin (input, doing, failed, output, done; always in that order).
+  The default is now input/failed/output, in place of done/failed/output. The choice is kept and
+  shared by every window. `doing` counts are amber.
 - `install.sh`: install or update the macOS app with one `curl` command. A `curl` download isn't
   quarantined, so it opens without the "Not Opened" dialog until the build is notarized.
 

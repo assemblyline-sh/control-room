@@ -2,20 +2,23 @@
 "use client";
 
 import { useNodeCounts } from "@/state/counts-store";
+import { useCountBins } from "@/state/count-bins";
 
 /**
- * done / failed / output for a factory, line or station row (sums across
- * the stations below it); the workpiece count for a bin row. Live — see
- * counts-store.js.
+ * The chosen bins' counts (count-bins.js; input / failed / output by default)
+ * for a factory, line or station row (sums across the stations below it);
+ * the workpiece count for a bin row. Live — see counts-store.js.
  *
- * Colours, when non-zero: failed red (needs attention), output green
- * (work produced), done grey (archive receipts — history, not work).
+ * Colours, when non-zero: doing amber (being worked on), failed red (needs
+ * attention), output green (work produced), done grey (archive receipts —
+ * history, not work).
  *
  * @param {{ resource: import("@/lib/resource-id").ResourceId }} props
  * @returns {React.JSX.Element | null}
  */
 export default function CountsBadge({ resource }) {
   const c = useNodeCounts(resource);
+  const bins = useCountBins();
   if (c === null) return null;
 
   if (typeof c === "number") {
@@ -23,12 +26,16 @@ export default function CountsBadge({ resource }) {
     return <span style={{ ...badgeStyle, ...(c > 0 ? BIN_STYLE[bin] : {}) }}>{compact(c)}</span>;
   }
 
+  if (bins.length === 0) return null;
   const where = resource.type === "station" ? "" : " (sum of its stations)";
   return (
-    <span style={badgeStyle} title={`${c.done} done · ${c.failed} failed · ${c.output} in output${where}`}>
-      <span style={c.done > 0 ? doneStyle : undefined}>{compact(c.done)}</span>/
-      <span style={c.failed > 0 ? failedStyle : undefined}>{compact(c.failed)}</span>/
-      <span style={c.output > 0 ? outputStyle : undefined}>{compact(c.output)}</span>
+    <span style={badgeStyle} title={`${bins.map((b) => `${c[b]} ${b}`).join(" · ")}${where}`}>
+      {bins.map((b, i) => (
+        <span key={b}>
+          {i > 0 && "/"}
+          <span style={c[b] > 0 ? BIN_STYLE[b] : undefined}>{compact(c[b])}</span>
+        </span>
+      ))}
     </span>
   );
 }
@@ -57,7 +64,10 @@ const failedStyle = { color: "#ff7b72", fontWeight: 600 };
 const outputStyle = { color: "#3fb950" };
 
 /** @type {React.CSSProperties} */
+const doingStyle = { color: "#e3b341" };
+
+/** @type {React.CSSProperties} */
 const doneStyle = { color: "#6e7681" };
 
 /** @type {Object<string, React.CSSProperties>} */
-const BIN_STYLE = { failed: failedStyle, output: outputStyle, done: doneStyle };
+const BIN_STYLE = { doing: doingStyle, failed: failedStyle, output: outputStyle, done: doneStyle };
