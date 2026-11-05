@@ -42,7 +42,7 @@ is safe to delete.
 The probe is al-control's `src/probe.js`, bundled byte for byte, and it runs the same way for
 every host, so Control Room and the CLI compute the same lines, terminals and counts. On this
 machine it uses the `node` your login shell finds (or the local host's `node:` in the config).
-Remote calls share al-control's SSH connection (`~/.al/al-control/ssh-%C`), so
+Remote calls share al-control's SSH connection (`~/.al/al-control/ssh-<hash>`), so
 whichever signs in first, the other rides along.
 
 ## Install

@@ -14,8 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Adding a remote host no longer fails with "too long for Unix domain socket" on a Mac whose home
-  path is up to 26 characters: the shorter root keeps ssh's socket path within the limit.
+- Adding a remote host no longer fails with "too long for Unix domain socket" on a long home path.
+  Sockets are named by a 12-character hash of the host's alias instead of ssh's 40-character `%C`,
+  and the length check counts the 17 characters ssh adds to its temporary socket. Sharing now works
+  for home paths up to 54 characters and is skipped beyond that.
 
 ## [0.2.0] - 2026-10-24
 

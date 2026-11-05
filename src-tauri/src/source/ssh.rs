@@ -2,7 +2,7 @@
 // the terminal — the same call as al-control's src/transport.js, so the host
 // needs only node (and pm2), nothing installed:
 //
-//   ssh -o BatchMode=yes -o ControlMaster=auto -o ControlPath=~/.al/al-control/ssh-%C
+//   ssh -o BatchMode=yes -o ControlMaster=auto -o ControlPath=~/.al/al-control/ssh-<hash>
 //       -o ControlPersist=10m -- <alias> '<PATH=dir(node):$PATH> <command>'
 //
 // pm2 commands run inside the user's login shell instead (`pm2_command`).
@@ -20,6 +20,8 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+use sha2::{Digest, Sha256};
+
 use crate::central_config::{family_root, HostEntry};
 use crate::commands::CommandError;
 use crate::events;
@@ -33,12 +35,16 @@ pub fn shell_quote(s: &str) -> String {
 }
 
 /// ssh argv up to and including the destination. Same options as the CLI;
-/// sockets always under ~/.al/al-control (unix socket paths cap at 104
-/// bytes; `%C` is 40 hex chars) — skip multiplexing if even that's too long.
+/// sockets always under ~/.al/al-control (unix socket paths cap at 104 bytes,
+/// and ssh binds `<path>.XXXXXXXXXXXXXXXX`, 17 more, first). `%C` is 40 hex
+/// chars and can't be shortened, so the name is our own hash of the alias, the
+/// same one the CLI builds — skip multiplexing if even that's too long.
 pub fn ssh_args(host: &HostEntry, tty: bool) -> Vec<String> {
+    let alias = host.ssh.clone().unwrap_or_default();
     let socket_dir = family_root().join("al-control");
-    let control_path = socket_dir.join("ssh-%C").display().to_string();
-    let multiplex = control_path.len() - 2 + 40 < 104;
+    let socket_name: String = Sha256::digest(alias.as_bytes()).iter().take(6).map(|b| format!("{:02x}", b)).collect();
+    let control_path = socket_dir.join(format!("ssh-{}", socket_name)).display().to_string();
+    let multiplex = control_path.len() + 17 < 104;
     if multiplex {
         let _ = std::fs::create_dir_all(&socket_dir);
     }
@@ -53,7 +59,7 @@ pub fn ssh_args(host: &HostEntry, tty: bool) -> Vec<String> {
         args.push("-t".into());
     }
     args.push("--".into());
-    args.push(host.ssh.clone().unwrap_or_default());
+    args.push(alias);
     args
 }
 
@@ -208,5 +214,11 @@ mod tests {
         assert_eq!(&args[..2], ["-o", "BatchMode=yes"]);
         assert!(args.contains(&"-t".to_string()));
         assert_eq!(&args[args.len() - 2..], ["--", "prod-box"]);
+    }
+
+    #[test]
+    fn socket_is_named_by_the_same_hash_as_the_cli() {
+        let args = ssh_args(&host(None), false);
+        assert!(args.iter().any(|a| a.starts_with("ControlPath=") && a.ends_with("/al-control/ssh-61399a89f694")), "{:?}", args);
     }
 }

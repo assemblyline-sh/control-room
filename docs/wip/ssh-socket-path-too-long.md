@@ -1,6 +1,6 @@
 # SSH socket path too long on macOS
 
-## Status: IN PROGRESS (~30%)
+## Status: IN PROGRESS (~55%)
 
 Connecting to a remote host fails on a Mac with a long home path, because the SSH socket path
 goes over the macOS limit. This WIP replaces ssh's 40-character `%C` hash in the socket name
@@ -103,19 +103,20 @@ al-control goes first, as with the probe. Reference implementation for control-r
 - [x] `CHANGELOG.md`: entry under `[Unreleased]`, `### Fixed`
 - [x] `npm test` passes (86 tests, in a scratch copy: al-control has no `node_modules` here)
 
-### Phase 2: control-room ❌
+### Phase 2: control-room 🔄
 
-- [ ] `src-tauri/Cargo.toml`: add `sha2 = "0.10"`. It's already in `Cargo.lock` at 0.10.9 through
+- [x] `src-tauri/Cargo.toml`: add `sha2 = "0.10"`. It's already in `Cargo.lock` at 0.10.9 through
       another crate, so nothing new is downloaded or compiled
-- [ ] `src-tauri/src/source/ssh.rs`, `ssh_args()`: the same hash and the same check, written the
+- [x] `src-tauri/src/source/ssh.rs`, `ssh_args()`: the same hash and the same check, written the
       same way as `sshArgs()`
-- [ ] `src-tauri/src/source/ssh.rs`: update the header comment (line 5) and the doc comment on
+- [x] `src-tauri/src/source/ssh.rs`: update the header comment (line 5) and the doc comment on
       `ssh_args`
-- [ ] `src-tauri/src/source/ssh.rs` test: alias `prod-box` gives `ssh-61399a89f694`, the same
+- [x] `src-tauri/src/source/ssh.rs` test: alias `prod-box` gives `ssh-61399a89f694`, the same
       expected value as al-control. This is what keeps the two in step
-- [ ] `README.md` line 45: new socket name
-- [ ] `CHANGELOG.md`: entry under `[Unreleased]`
-- [ ] `cargo test`, `npm run typecheck` and `npm run lint` pass
+- [x] `README.md` line 45: new socket name
+- [x] `CHANGELOG.md`: entry under `[Unreleased]`
+- [ ] `cargo test`, `npm run typecheck` and `npm run lint` pass. No cargo on alex-linux-pc, so
+      this runs in CI after the push: the Rust and the hand-edited `Cargo.lock` are not compiled yet
 
 The probe doesn't change, so there's no pin bump and no `check:probe` update: `sshArgs()` is in
 `transport.js`, not `probe.js`.
