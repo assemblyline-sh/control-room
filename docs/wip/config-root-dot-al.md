@@ -1,6 +1,6 @@
 # Config root moves from ~/.assemblyline to ~/.al
 
-## Status: IN PROGRESS (~80%)
+## Status: IN PROGRESS (~90%)
 
 Every al-<tool> keeps its config under `~/.al/<tool>/` instead of `~/.assemblyline/<tool>/`, in
 al-control, al-orc and control-room. The first run of an updated tool moves the existing folder,
@@ -117,9 +117,9 @@ work. Nothing is pushed or released as part of these phases.
 
 `cargo` and `node_modules` aren't on alex-linux-pc, so Rust and the typecheck run in Phase 6.
 
-### Phase 5: skills ❌
+### Phase 5: skills ✅
 - [x] `migrate-worker-to-factory/cutover.md` and `name-map.md`
-- [ ] Commit: `docs(migrate-worker-to-factory): al-orc config is under ~/.al`
+- [x] Commit: `docs(migrate-worker-to-factory): al-orc config is under ~/.al`
 
 ### Phase 6: Check on the Mac ❌
 
