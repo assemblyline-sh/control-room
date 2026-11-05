@@ -11,7 +11,7 @@ import Shell from "@/components/Shell";
  */
 
 /**
- * Boot: load the central config (~/.assemblyline/al-control/config.yml), route
+ * Boot: load the central config (~/.al/al-control/config.yml), route
  * to onboarding when no host has any factories, else render the shell.
  */
 export default function ControlRoomPage() {
@@ -60,7 +60,7 @@ export default function ControlRoomPage() {
           <h1 style={titleStyle}>Can&apos;t read the al-control config</h1>
           <pre style={errorStyle}>{error}</pre>
           <p style={hintStyle}>
-            Control Room and the al-control CLI share <code>~/.assemblyline/al-control/config.yml</code>.
+            Control Room and the al-control CLI share <code>~/.al/al-control/config.yml</code>.
             Fix the file, then reload (Cmd-R).
           </p>
         </div>

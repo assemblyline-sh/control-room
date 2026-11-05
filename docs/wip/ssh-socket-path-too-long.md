@@ -71,9 +71,9 @@ characters; beyond that the app skips sharing, slower but no error.
 - **`ssh-%r@%n` (remote user and alias).** Works, and `ssh -G` expands it correctly, but the
   length varies and the app can't always know the remote user, so the check couldn't be exact.
 - **Moving sockets up to `~/.assemblyline/ssh-…`.** Breaks the per-tool folder convention.
-- **Renaming `~/.assemblyline` to `~/.al`.** Not needed for this bug, and that folder holds
-  al-control's config and al-orc's credentials on every machine, so it would need a migration in
-  three tools. Can be decided separately.
+- **Renaming `~/.assemblyline` to `~/.al` as the whole fix.** Done separately (al-control decision
+  0007). It brings this Mac to 102 characters with the suffix, one under the limit, so a home
+  path two characters longer still fails. The hash is still needed.
 - **Only fixing the check.** Stops the error but turns sharing off on this Mac, so every call
   pays a new handshake and possibly a Tailscale check.
 

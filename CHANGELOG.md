@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The config root is `~/.al`, not `~/.assemblyline`, same as al-control. The first run moves the
+  folder and leaves a `~/.assemblyline` symlink for tools not yet updated.
+
+### Fixed
+
+- Adding a remote host no longer fails with "too long for Unix domain socket" on a Mac whose home
+  path is up to 26 characters: the shorter root keeps ssh's socket path within the limit.
+
 ## [0.2.0] - 2026-10-24
 
 ### Added

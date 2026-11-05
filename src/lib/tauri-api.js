@@ -22,7 +22,7 @@ import { confirm, message } from "@tauri-apps/plugin-dialog";
  */
 
 /**
- * al-control's `~/.assemblyline/al-control/config.yml` — control-room's only config.
+ * al-control's `~/.al/al-control/config.yml` — control-room's only config.
  * @typedef {Object} CentralConfig
  * @property {string} path - the file on disk
  * @property {string | null} current_host - the CLI's current host; the app never writes it

@@ -2,7 +2,7 @@
 // the terminal — the same call as al-control's src/transport.js, so the host
 // needs only node (and pm2), nothing installed:
 //
-//   ssh -o BatchMode=yes -o ControlMaster=auto -o ControlPath=~/.assemblyline/al-control/ssh-%C
+//   ssh -o BatchMode=yes -o ControlMaster=auto -o ControlPath=~/.al/al-control/ssh-%C
 //       -o ControlPersist=10m -- <alias> '<PATH=dir(node):$PATH> <command>'
 //
 // pm2 commands run inside the user's login shell instead (`pm2_command`).
@@ -20,7 +20,7 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use crate::central_config::{home_dir, HostEntry};
+use crate::central_config::{family_root, HostEntry};
 use crate::commands::CommandError;
 use crate::events;
 
@@ -33,10 +33,10 @@ pub fn shell_quote(s: &str) -> String {
 }
 
 /// ssh argv up to and including the destination. Same options as the CLI;
-/// sockets always under ~/.assemblyline/al-control (unix socket paths cap at 104
+/// sockets always under ~/.al/al-control (unix socket paths cap at 104
 /// bytes; `%C` is 40 hex chars) — skip multiplexing if even that's too long.
 pub fn ssh_args(host: &HostEntry, tty: bool) -> Vec<String> {
-    let socket_dir = home_dir().join(".assemblyline").join("al-control");
+    let socket_dir = family_root().join("al-control");
     let control_path = socket_dir.join("ssh-%C").display().to_string();
     let multiplex = control_path.len() - 2 + 40 < 104;
     if multiplex {

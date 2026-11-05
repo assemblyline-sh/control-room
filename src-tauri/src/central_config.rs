@@ -1,4 +1,4 @@
-// The al-control config — ~/.assemblyline/al-control/config.yml — is control-room's
+// The al-control config — ~/.al/al-control/config.yml — is control-room's
 // only config. Same file and same validation as al-control's
 // src/config.js, so the app and the CLI always agree on hosts, factories and
 // keep lists.
@@ -64,12 +64,31 @@ pub struct CentralConfig {
     pub hosts: Vec<HostEntry>,
 }
 
-/// `$AL_CONTROL_CONFIG_DIR/config.yml`, else `~/.assemblyline/al-control/config.yml`.
+/// `$AL_CONTROL_CONFIG_DIR/config.yml`, else `~/.al/al-control/config.yml`.
 pub fn config_path() -> PathBuf {
     let dir = std::env::var_os("AL_CONTROL_CONFIG_DIR")
         .map(PathBuf::from)
-        .unwrap_or_else(|| home_dir().join(".assemblyline").join("al-control"));
+        .unwrap_or_else(|| family_root().join("al-control"));
     dir.join("config.yml")
+}
+
+/// `~/.al`, shared by every al-<tool>. Same move as al-control's `familyRoot`
+/// (its decision 0007).
+pub fn family_root() -> PathBuf {
+    family_root_in(&home_dir())
+}
+
+/// On the first run after the rename from `.assemblyline` the whole folder moves
+/// here, keeping a symlink for tools not yet updated. A failed rename means
+/// another process moved it first.
+fn family_root_in(home: &Path) -> PathBuf {
+    let root = home.join(".al");
+    let legacy = home.join(".assemblyline");
+    if !root.exists() && legacy.exists() && std::fs::rename(&legacy, &root).is_ok() {
+        #[cfg(unix)]
+        let _ = std::os::unix::fs::symlink(".al", &legacy);
+    }
+    root
 }
 
 pub fn home_dir() -> PathBuf {
@@ -401,6 +420,31 @@ mod tests {
             std::fs::write(&file, t).unwrap();
         }
         file
+    }
+
+    #[test]
+    fn family_root_moves_the_legacy_folder_and_leaves_a_symlink() {
+        let home = tmp_file(None).parent().unwrap().to_path_buf();
+        std::fs::create_dir_all(home.join(".assemblyline/al-orc")).unwrap();
+        std::fs::write(home.join(".assemblyline/al-orc/config.yml"), "orgs: {}").unwrap();
+
+        let root = family_root_in(&home);
+
+        assert_eq!(root, home.join(".al"));
+        assert!(root.join("al-orc/config.yml").is_file());
+        assert!(std::fs::symlink_metadata(home.join(".assemblyline")).unwrap().file_type().is_symlink());
+        assert!(home.join(".assemblyline/al-orc/config.yml").is_file());
+    }
+
+    #[test]
+    fn family_root_keeps_an_existing_al_folder() {
+        let home = tmp_file(None).parent().unwrap().to_path_buf();
+        std::fs::create_dir_all(home.join(".al")).unwrap();
+        std::fs::create_dir_all(home.join(".assemblyline")).unwrap();
+
+        family_root_in(&home);
+
+        assert!(!std::fs::symlink_metadata(home.join(".assemblyline")).unwrap().file_type().is_symlink());
     }
 
     const VALID: &str = "current_host: local

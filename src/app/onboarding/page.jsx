@@ -11,7 +11,7 @@ import { addFactory, confirmDialog, loadConfig, localFactories, pickFolder, remo
 
 /**
  * Add local factory repos. Each one is written straight to the central config
- * (~/.assemblyline/al-control/config.yml, shared with the al-control CLI) under the
+ * (~/.al/al-control/config.yml, shared with the al-control CLI) under the
  * `local` host, named after its directory.
  */
 export default function OnboardingPage() {
@@ -73,7 +73,7 @@ export default function OnboardingPage() {
         </h1>
         <p style={{ margin: "0 0 24px", color: "var(--muted-foreground)" }}>
           Point Control Room at one or more local <code>factory-*</code> repos. They&apos;re saved
-          to <code>~/.assemblyline/al-control/config.yml</code> under the <code>local</code> host — the
+          to <code>~/.al/al-control/config.yml</code> under the <code>local</code> host — the
           same config the al-control CLI reads.
         </p>
 

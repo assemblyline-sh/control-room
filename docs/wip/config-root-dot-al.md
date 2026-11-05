@@ -1,6 +1,6 @@
 # Config root moves from ~/.assemblyline to ~/.al
 
-## Status: IN PROGRESS (~10%)
+## Status: IN PROGRESS (~80%)
 
 Every al-<tool> keeps its config under `~/.al/<tool>/` instead of `~/.assemblyline/<tool>/`, in
 al-control, al-orc and control-room. The first run of an updated tool moves the existing folder,
@@ -89,31 +89,31 @@ work. Nothing is pushed or released as part of these phases.
 - [x] This file
 - [x] Commit: `docs: add WIP for config-root-dot-al`
 
-### Phase 2: al-control ❌
+### Phase 2: al-control ✅
 - [x] `familyRoot()`; `configDir()` and `sshArgs()` use it
 - [x] `README.md`, `docs/architecture/` paths, `CHANGELOG.md` under `[Unreleased]`
 - [x] Decision `0007-config-root-is-dot-al.md`
-- [ ] `familyRoot(home = homedir())`; tests pass a temp folder
-- [ ] Decision 0007 notes that a shorter socket name would lift the length limit on the name
-- [ ] `tests/config.test.js`: moved with symlink; existing `~/.al` left alone; fresh machine moves nothing
-- [ ] All suites pass, in a scratch copy (no `node_modules` in the repo here)
-- [ ] Commit: `feat(config): the config root is ~/.al; move ~/.assemblyline on first run`
+- [x] `familyRoot(home = homedir())`; tests pass a temp folder
+- [x] Decision 0007 notes that a shorter socket name would lift the length limit on the name
+- [x] `tests/config.test.js`: moved with symlink; existing `~/.al` left alone; fresh machine moves nothing
+- [x] All suites pass, in a scratch copy (no `node_modules` in the repo here)
+- [x] Commit: `feat(config): the config root is ~/.al; move ~/.assemblyline on first run`
 
-### Phase 3: al-orc ❌
+### Phase 3: al-orc ✅
 - [x] `familyRoot()`; `CONFIG_DIR` uses it
 - [x] `README.md`, `SECURITY.md`, `.env.example`, comments, `CHANGELOG.md`
-- [ ] `familyRoot(home = homedir())`
-- [ ] `tests/cli/config-store.test.js`: same three cases as al-control
-- [ ] All suites pass, with a temp `HOME`
-- [ ] Commit: `feat(config): the config root is ~/.al; move ~/.assemblyline on first run`
+- [x] `familyRoot(home = homedir())`
+- [x] `tests/cli/config-store.test.js`: same three cases as al-control
+- [x] All suites pass, with a temp `HOME`
+- [x] Commit: `feat(config): the config root is ~/.al; move ~/.assemblyline on first run`
 
-### Phase 4: control-room ❌
+### Phase 4: control-room ✅
 - [x] `family_root()`; `config_path()` and `ssh_args()` use it
 - [x] Two Rust tests for the move
 - [x] `README.md`, `CLAUDE.md`, UI path strings, comments, `CHANGELOG.md`
 - [x] `ssh-socket-path-too-long.md`: the rejected-rename bullet
-- [ ] `grep` finds no live `~/.assemblyline` reference outside changelogs and WIPs
-- [ ] Commit: `feat(config): the config root is ~/.al; move ~/.assemblyline on first run`
+- [x] `grep` finds no live `~/.assemblyline` reference outside changelogs and WIPs
+- [x] Commit: `feat(config): the config root is ~/.al; move ~/.assemblyline on first run`
 
 `cargo` and `node_modules` aren't on alex-linux-pc, so Rust and the typecheck run in Phase 6.
 

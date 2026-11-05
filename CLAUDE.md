@@ -4,7 +4,7 @@ Guidance for Claude Code (claude.ai/code) working in this repo.
 
 ## Project Overview
 
-`control-room` is a Tauri 2 + Next.js desktop app — the "Lens" to the al-control CLI's "kubectl". It reads the same config, `~/.assemblyline/al-control/config.yml` (hosts → factories), shows one host at a time, and renders factory-floor state for that host's `factory-*` repos: through al-control's probe, run with this machine's `node` for `local` or piped over `ssh` for a remote host. It needs `node` on the user's machine (every machine that runs a factory has it) but no CLI install. The UI is a VS Code-style three-pane shell: tree rail on the left, tab strip + per-resource view on the right. See `README.md` for the product overview and `docs/wip/fork-and-reshape.md` for the fork from fob-watch (FinOpsBricks), whose history holds the design log of everything below.
+`control-room` is a Tauri 2 + Next.js desktop app — the "Lens" to the al-control CLI's "kubectl". It reads the same config, `~/.al/al-control/config.yml` (hosts → factories), shows one host at a time, and renders factory-floor state for that host's `factory-*` repos: through al-control's probe, run with this machine's `node` for `local` or piped over `ssh` for a remote host. It needs `node` on the user's machine (every machine that runs a factory has it) but no CLI install. The UI is a VS Code-style three-pane shell: tree rail on the left, tab strip + per-resource view on the right. See `README.md` for the product overview and `docs/wip/fork-and-reshape.md` for the fork from fob-watch (FinOpsBricks), whose history holds the design log of everything below.
 
 ## Related repositories
 
@@ -20,7 +20,7 @@ In the Assembly Line workspace (`~/ec2code/assemblyline/`, see its CLAUDE.md):
 React (Next.js, static export)
    ↓ invoke(...)
 Tauri 2 Rust commands — every factory command takes (host, factory name)
-   ├── commands.rs + central_config.rs     ~/.assemblyline/al-control/config.yml: load / add / remove;
+   ├── commands.rs + central_config.rs     ~/.al/al-control/config.yml: load / add / remove;
    │                                       pick_folder
    ├── resolve.rs                          (host, factory) → config entries, on every call
    ├── monitor_commands.rs                 lines / stations / bins / workpieces / files

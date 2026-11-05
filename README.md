@@ -28,7 +28,7 @@ is safe to delete.
 ## How it works
 
 ```
-             ~/.assemblyline/al-control/config.yml
+             ~/.al/al-control/config.yml
              hosts → factories → paths   (shared with al-control)
                               │
                  Control Room (Tauri: Rust + Next.js)
@@ -42,7 +42,7 @@ is safe to delete.
 The probe is al-control's `src/probe.js`, bundled byte for byte, and it runs the same way for
 every host, so Control Room and the CLI compute the same lines, terminals and counts. On this
 machine it uses the `node` your login shell finds (or the local host's `node:` in the config).
-Remote calls share al-control's SSH connection (`~/.assemblyline/al-control/ssh-%C`), so
+Remote calls share al-control's SSH connection (`~/.al/al-control/ssh-%C`), so
 whichever signs in first, the other rides along.
 
 ## Install
@@ -74,7 +74,7 @@ above doesn't hit this: `curl` downloads aren't quarantined.
 
 ## Config
 
-`~/.assemblyline/al-control/config.yml`, the same file as al-control:
+`~/.al/al-control/config.yml`, the same file as al-control:
 
 ```yaml
 hosts:
