@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-05
+
 ### Changed
 
 - The config root is `~/.al`, not `~/.assemblyline`, same as al-control. The first run moves the

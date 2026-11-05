@@ -145,8 +145,8 @@ it can't show the failure.
 Needs a go-ahead before each step.
 
 - [x] Commit and push each repo
-- [ ] Release al-control 0.3.2 (`code:release`)
-- [ ] Release control-room 0.2.1 (`code:release`)
+- [ ] Release al-control 0.4.0 (`code:release`)
+- [ ] Release control-room 0.3.0 (`code:release`)
 - [ ] Delete this WIP
 
 ## Known Limitations

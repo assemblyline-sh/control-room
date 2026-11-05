@@ -125,7 +125,7 @@ work. Nothing is pushed or released as part of these phases.
 
 Needs Alex's Mac. Nothing here is checked until it has been run.
 
-- [ ] `cargo test` in `src-tauri` and `npm run typecheck`
+- [x] `cargo test` in `src-tauri` and `npm run typecheck` (on alexs-mbp-16, temp `HOME`)
 - [ ] Open control-room: `~/.al/al-control/config.yml` exists, `~/.assemblyline` is a symlink, the
       hosts still show
 - [ ] `al-orc status` still shows the logged-in profile
