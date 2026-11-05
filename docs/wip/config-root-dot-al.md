@@ -131,7 +131,7 @@ Needs Alex's Mac. Nothing here is checked until it has been run.
 - [ ] Add `alex-linux-pc` as a host: Test passes with no socket error
 - [ ] Delete this WIP: `docs: remove completed WIP config-root-dot-al`
 
-### Phase 7: No symlink ❌
+### Phase 7: No symlink 🔄
 
 Alex's call on 2026-11-05: the move leaves nothing at `~/.assemblyline`. The three machines'
 symlinks are already deleted. This supersedes "Symlink left behind" above, and al-control decision
@@ -140,10 +140,10 @@ symlinks are already deleted. This supersedes "Symlink left behind" above, and a
 Cost, accepted: a tool not yet updated finds no config after another tool moves the folder, and
 could write a new `~/.assemblyline` beside `~/.al`. Update the tools together.
 
-- [ ] al-control: drop `symlinkSync`, fix the `familyRoot` comment, tests, decision 0008, release 0.4.1
-- [ ] al-orc: the same, release 0.4.1
-- [ ] control-room: drop the symlink in `family_root_in`, tests, `CHANGELOG.md`, release 0.3.1
-- [ ] All suites pass on alexs-mbp-16 (`--watchman=false` for jest); push
+- [x] al-control: drop `symlinkSync`, fix the `familyRoot` comment, tests, decision 0008, release 0.4.1
+- [x] al-orc: the same, release 0.4.1
+- [x] control-room: drop the symlink in `family_root_in`, tests, `CHANGELOG.md`, release 0.3.1
+- [x] All suites pass on alexs-mbp-16 (`--watchman=false` for jest); push
 - [ ] Alex publishes `al-control` and `al-orc` 0.4.1; tag all three; update the three machines
 
 ## Related Files

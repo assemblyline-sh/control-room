@@ -79,14 +79,12 @@ pub fn family_root() -> PathBuf {
 }
 
 /// On the first run after the rename from `.assemblyline` the whole folder moves
-/// here, keeping a symlink for tools not yet updated. A failed rename means
-/// another process moved it first.
+/// here. A failed rename means another process moved it first.
 fn family_root_in(home: &Path) -> PathBuf {
     let root = home.join(".al");
     let legacy = home.join(".assemblyline");
-    if !root.exists() && legacy.exists() && std::fs::rename(&legacy, &root).is_ok() {
-        #[cfg(unix)]
-        let _ = std::os::unix::fs::symlink(".al", &legacy);
+    if !root.exists() && legacy.exists() {
+        let _ = std::fs::rename(&legacy, &root);
     }
     root
 }
@@ -423,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn family_root_moves_the_legacy_folder_and_leaves_a_symlink() {
+    fn family_root_moves_the_legacy_folder_and_leaves_nothing_behind() {
         let home = tmp_file(None).parent().unwrap().to_path_buf();
         std::fs::create_dir_all(home.join(".assemblyline/al-orc")).unwrap();
         std::fs::write(home.join(".assemblyline/al-orc/config.yml"), "orgs: {}").unwrap();
@@ -432,8 +430,7 @@ mod tests {
 
         assert_eq!(root, home.join(".al"));
         assert!(root.join("al-orc/config.yml").is_file());
-        assert!(std::fs::symlink_metadata(home.join(".assemblyline")).unwrap().file_type().is_symlink());
-        assert!(home.join(".assemblyline/al-orc/config.yml").is_file());
+        assert!(!home.join(".assemblyline").exists());
     }
 
     #[test]
@@ -444,7 +441,7 @@ mod tests {
 
         family_root_in(&home);
 
-        assert!(!std::fs::symlink_metadata(home.join(".assemblyline")).unwrap().file_type().is_symlink());
+        assert!(home.join(".assemblyline").is_dir());
     }
 
     const VALID: &str = "current_host: local
