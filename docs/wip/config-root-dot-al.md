@@ -1,6 +1,6 @@
 # Config root moves from ~/.assemblyline to ~/.al
 
-## Status: IN PROGRESS (~90%)
+## Status: IN PROGRESS (~85%)
 
 Every al-<tool> keeps its config under `~/.al/<tool>/` instead of `~/.assemblyline/<tool>/`, in
 al-control, al-orc and control-room. The first run of an updated tool moves the existing folder,
@@ -126,11 +126,25 @@ work. Nothing is pushed or released as part of these phases.
 Needs Alex's Mac. Nothing here is checked until it has been run.
 
 - [x] `cargo test` in `src-tauri` and `npm run typecheck` (on alexs-mbp-16, temp `HOME`)
-- [ ] Open control-room: `~/.al/al-control/config.yml` exists, `~/.assemblyline` is a symlink, the
-      hosts still show
+- [ ] Open control-room: `~/.al/al-control/config.yml` exists, the hosts still show
 - [ ] `al-orc status` still shows the logged-in profile
 - [ ] Add `alex-linux-pc` as a host: Test passes with no socket error
 - [ ] Delete this WIP: `docs: remove completed WIP config-root-dot-al`
+
+### Phase 7: No symlink ❌
+
+Alex's call on 2026-11-05: the move leaves nothing at `~/.assemblyline`. The three machines'
+symlinks are already deleted. This supersedes "Symlink left behind" above, and al-control decision
+0008 amends 0007.
+
+Cost, accepted: a tool not yet updated finds no config after another tool moves the folder, and
+could write a new `~/.assemblyline` beside `~/.al`. Update the tools together.
+
+- [ ] al-control: drop `symlinkSync`, fix the `familyRoot` comment, tests, decision 0008, release 0.4.1
+- [ ] al-orc: the same, release 0.4.1
+- [ ] control-room: drop the symlink in `family_root_in`, tests, `CHANGELOG.md`, release 0.3.1
+- [ ] All suites pass on alexs-mbp-16 (`--watchman=false` for jest); push
+- [ ] Alex publishes `al-control` and `al-orc` 0.4.1; tag all three; update the three machines
 
 ## Related Files
 
