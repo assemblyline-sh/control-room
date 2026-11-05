@@ -1,6 +1,6 @@
 # SSH socket path too long on macOS
 
-## Status: NOT STARTED
+## Status: IN PROGRESS (~30%)
 
 Connecting to a remote host fails on a Mac with a long home path, because the SSH socket path
 goes over the macOS limit. This WIP replaces ssh's 40-character `%C` hash in the socket name
@@ -41,17 +41,21 @@ the error fits it. It hasn't been reproduced on a Mac yet (Phase 4).
 
 al-control has the same code, so the CLI should fail the same way on this Mac.
 
+These figures are from when the error was reported. The root has since moved to `~/.al`
+(al-control decision 0007), which makes the path 85 characters, 102 with the suffix: one under
+the limit, so a home path two characters longer still fails.
+
 ## Proposed Solution
 
 Name the socket `ssh-<12 hex chars>`, where the 12 characters are the start of the SHA-256 of
 the host's `ssh` value from the config, as written. Count the 17 extra characters in the check.
 
 ```
-Now:    /Users/alex.vazhatharayil/.assemblyline/al-control/ssh-1dd49b6615c65871b00955f2ef67cc33f4dd99fa
-After:  /Users/alex.vazhatharayil/.assemblyline/al-control/ssh-f7e2fc173405
+Before: /Users/alex.vazhatharayil/.al/al-control/ssh-1dd49b6615c65871b00955f2ef67cc33f4dd99fa
+After:  /Users/alex.vazhatharayil/.al/al-control/ssh-f7e2fc173405
 ```
 
-The new path is 67 characters, 84 with the suffix. Sharing now works for any home path up to 44
+The new path is 57 characters, 74 with the suffix. Sharing now works for any home path up to 54
 characters; beyond that the app skips sharing, slower but no error.
 
 ### Key decisions
@@ -79,25 +83,25 @@ characters; beyond that the app skips sharing, slower but no error.
 
 ## Implementation Phases
 
-### Phase 1: al-control ❌
+### Phase 1: al-control ✅
 
 al-control goes first, as with the probe. Reference implementation for control-room.
 
-- [ ] `src/transport.js`, `sshArgs()`: build the name with `createHash('sha256')` from
+- [x] `src/transport.js`, `sshArgs()`: build the name with `createHash('sha256')` from
       `node:crypto` over `host.ssh`, `.slice(0, 12)`
-- [ ] Same function: `multiplex = control_path.length + 17 < 104`, and update the comment to
+- [x] Same function: `multiplex = control_path.length + 17 < 104`, and update the comment to
       explain the 17 (ssh's temporary socket suffix)
-- [ ] `tests/transport.test.js`: alias `prod-box` gives `ssh-61399a89f694`
-- [ ] `tests/transport.test.js`: `bob@prod-box` and `carol@prod-box` give different sockets
-- [ ] `tests/transport.test.js`: a home path just over the limit skips `ControlMaster`
-      (set `HOME` to a long path under a temp dir, restore it after)
-- [ ] `docs/architecture/ssh-connection-sharing.md`: new name, the 17-character suffix in
+- [x] `tests/transport.test.js`: alias `prod-box` gives `ssh-61399a89f694`
+- [x] `tests/transport.test.js`: `bob@prod-box` and `carol@prod-box` give different sockets
+- [x] `tests/transport.test.js`: a home path just over the limit skips `ControlMaster`
+      (through a new `home` option on `sshArgs()`, because `os.homedir()` ignores `HOME` under jest)
+- [x] `docs/architecture/ssh-connection-sharing.md`: new name, the 17-character suffix in
       "Socket location", and the **Close it** command, which can no longer use `%C`:
       ```bash
-      ssh -O exit -o ControlPath=$HOME/.assemblyline/al-control/ssh-$(printf %s <alias> | shasum -a 256 | cut -c1-12) <alias>
+      ssh -O exit -o ControlPath=$HOME/.al/al-control/ssh-$(printf %s <alias> | shasum -a 256 | cut -c1-12) <alias>
       ```
-- [ ] `CHANGELOG.md`: entry under `[Unreleased]`, `### Fixed`
-- [ ] `npm test` passes
+- [x] `CHANGELOG.md`: entry under `[Unreleased]`, `### Fixed`
+- [x] `npm test` passes (86 tests, in a scratch copy: al-control has no `node_modules` here)
 
 ### Phase 2: control-room ❌
 
@@ -131,7 +135,7 @@ it can't show the failure.
 - [ ] Reproduce first, on the current build: Test on `alex-linux-pc` shows the error
 - [ ] Build control-room with the fix and repeat: Test succeeds
 - [ ] Factories on `alex-linux-pc` load, and the terminal and pm2 logs work
-- [ ] `ls ~/.assemblyline/al-control/` shows one `ssh-<12 chars>` socket
+- [ ] `ls ~/.al/al-control/` shows one `ssh-<12 chars>` socket
 - [ ] Run an al-control command on that host while the app is open: `ps` still shows a single
       `[mux]` process, so the app and the CLI share the connection
 
@@ -157,7 +161,7 @@ Noted, not solved, per `principles/solve-problems-you-have-seen.md`.
 - **Editing `~/.ssh/config`.** If an alias's `HostName` or `User` changes while a connection is
   open, calls keep using the old one until it closes. `%C` would have changed with the config.
   Close it with `ssh -O exit`.
-- **Very long home paths.** Over 44 characters, sharing is skipped.
+- **Very long home paths.** Over 54 characters, sharing is skipped.
 
 ## Standards Read
 
