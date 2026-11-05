@@ -1,6 +1,6 @@
 # SSH socket path too long on macOS
 
-## Status: IN PROGRESS (~55%)
+## Status: IN PROGRESS (~70%)
 
 Connecting to a remote host fails on a Mac with a long home path, because the SSH socket path
 goes over the macOS limit. This WIP replaces ssh's 40-character `%C` hash in the socket name
@@ -103,7 +103,7 @@ al-control goes first, as with the probe. Reference implementation for control-r
 - [x] `CHANGELOG.md`: entry under `[Unreleased]`, `### Fixed`
 - [x] `npm test` passes (86 tests, in a scratch copy: al-control has no `node_modules` here)
 
-### Phase 2: control-room 🔄
+### Phase 2: control-room ✅
 
 - [x] `src-tauri/Cargo.toml`: add `sha2 = "0.10"`. It's already in `Cargo.lock` at 0.10.9 through
       another crate, so nothing new is downloaded or compiled
@@ -115,25 +115,25 @@ al-control goes first, as with the probe. Reference implementation for control-r
       expected value as al-control. This is what keeps the two in step
 - [x] `README.md` line 45: new socket name
 - [x] `CHANGELOG.md`: entry under `[Unreleased]`
-- [ ] `cargo test`, `npm run typecheck` and `npm run lint` pass. No cargo on alex-linux-pc, so
-      this runs in CI after the push: the Rust and the hand-edited `Cargo.lock` are not compiled yet
+- [x] `cargo test`, `npm run typecheck` and `npm run lint` pass (in CI: no cargo on alex-linux-pc)
 
 The probe doesn't change, so there's no pin bump and no `check:probe` update: `sshArgs()` is in
 `transport.js`, not `probe.js`.
 
-### Phase 3: Workspace docs ❌
+### Phase 3: Workspace docs ✅
 
-- [ ] `apps/assemblyline.sh/docs/wip/cli-architecture.md` line 305: new socket name
+- [x] `apps/assemblyline.sh/docs/wip/cli-architecture.md` line 305: new socket name
 
 `apps/assemblyline.sh/docs/wip/worker-migrations.md` line 60 stays: it's about the old
 `~/.fob/fob-factory` path.
 
-### Phase 4: Verify on the Mac ❌
+### Phase 4: Verify on the Mac 🔄
 
 Needs the Mac: this Linux machine allows 107 usable characters and has a shorter home path, so
 it can't show the failure.
 
-- [ ] Reproduce first, on the current build: Test on `alex-linux-pc` shows the error
+- [ ] Reproduce first, on an installed build from before this fix: Test on `alex-linux-pc` shows
+      the error
 - [ ] Build control-room with the fix and repeat: Test succeeds
 - [ ] Factories on `alex-linux-pc` load, and the terminal and pm2 logs work
 - [ ] `ls ~/.al/al-control/` shows one `ssh-<12 chars>` socket
@@ -144,7 +144,7 @@ it can't show the failure.
 
 Needs a go-ahead before each step.
 
-- [ ] Commit each repo
+- [x] Commit and push each repo
 - [ ] Release al-control 0.3.2 (`code:release`)
 - [ ] Release control-room 0.2.1 (`code:release`)
 - [ ] Delete this WIP
