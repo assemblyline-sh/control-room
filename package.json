@@ -11,6 +11,7 @@
     "format": "prettier --write '**/*.{js,jsx,json,css,md}'",
     "typecheck": "tsc -p jsconfig.json",
     "check:probe": "node scripts/check-probe.mjs",
+    "test": "node --test \"tests/*.test.mjs\"",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"

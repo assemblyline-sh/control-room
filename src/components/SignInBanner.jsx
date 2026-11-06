@@ -7,24 +7,35 @@ import { useHostSsh } from "@/state/ssh-context";
 
 /**
  * Tailscale SSH (check mode) prints a sign-in URL on ssh's stderr and waits.
- * There's no terminal to show it in, so while the selected host has a call
- * waiting on one, show it here. The call carries on once you've signed in.
+ * There's no terminal to show it in, so while a call to `host` waits on one,
+ * show it here. The call carries on once you've signed in. `host` is the name
+ * the call runs under: the alias, for a computer not saved yet.
  *
+ * @param {{ host: string }} props
  * @returns {React.JSX.Element | null}
  */
-export default function SignInBanner() {
-  const { host } = useConfig();
-  const ssh = useHostSsh(host.name);
+export function SignInPrompt({ host }) {
+  const ssh = useHostSsh(host);
   if (!ssh.login_url) return null;
   const url = ssh.login_url;
   return (
     <div style={bannerStyle}>
-      <span>{host.name} needs you to sign in before it answers.</span>
+      <span>{host} needs you to sign in before it answers.</span>
       <button type="button" style={buttonStyle} onClick={() => openInFinder(url)}>
         Open sign-in page
       </button>
     </div>
   );
+}
+
+/**
+ * The sign-in prompt for this window's host.
+ *
+ * @returns {React.JSX.Element}
+ */
+export default function SignInBanner() {
+  const { host } = useConfig();
+  return <SignInPrompt host={host.name} />;
 }
 
 /** @type {React.CSSProperties} */

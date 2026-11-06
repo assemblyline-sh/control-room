@@ -1,6 +1,6 @@
 # First-run onboarding
 
-## Status: IN PROGRESS (~15%)
+## Status: IN PROGRESS (~25%)
 
 Take someone who has just installed Control Room to a working factory view without a moment of
 "what is this?" or "what do I do now?". This WIP replaces the local-only welcome page and the two
@@ -170,13 +170,14 @@ uses", and has one button: **Open Control Room**. It opens on the host just adde
 - **The host is saved once its checks pass,** not at the end, because `check_factory_path` reads
   the host from the config. If someone quits before adding a factory, the next launch returns to
   the flow and the host is already in the dropdown.
-- **Errors are translated, and the original stays under "Details".** Only errors we've seen, or
-  that `BatchMode=yes` makes certain:
+- **Errors are translated, and the original stays under "Details".** Only errors we've seen:
 
 | ssh or probe says | The user reads |
 |---|---|
-| `Connection refused` | Nothing answered on that computer. Is it on, and does SSH run there? |
+| `Connection refused` | It isn't accepting SSH connections. Is it on, with SSH enabled? |
+| `Operation timed out` | It didn't answer. Is it on, awake and on your network? |
 | `Could not resolve hostname` | Couldn't find a computer with that name. Check the spelling |
+| `Host key verification failed` | This computer hasn't connected there before. Run `ssh <name>` once and answer yes |
 | `Permission denied` | That computer didn't accept your SSH key. `ssh <name>` must work without a password |
 | `does not permit you to SSH as user` | Tailscale refused that user. Try `user@<name>` |
 | `node` exit 127 | Node isn't installed there, or isn't where we looked |
@@ -217,10 +218,13 @@ Each phase is committed on `alexs-mbp-16`. Git never runs on `alex-linux-pc`.
 - [x] Wrappers in `src/lib/tauri-api.js`
 - [x] Real check: `detect_node` from `ae-lp-3643` picks 22.21.0 on `alex-linux-pc`
 
-### Phase 2: Errors that say what to do ❌
-- [ ] `explainSshError` mapping the table above, keeping the original for Details, with tests
-- [ ] Confirm the missing sign-in prompt during a check, then show it for the host being connected
-- [ ] Reproduce each translated error for real where we can; confirm the wording fits
+### Phase 2: Errors that say what to do ✅
+- [x] `explainError` (`src/lib/explain-error.js`) mapping the table above, keeping the original for
+      Details, with tests on `node --test`, added to CI (this repo had no JS tests)
+- [x] Missing sign-in prompt confirmed from the code; `SignInPrompt` takes any host name, used by
+      the Connecting screen in Phase 4
+- [x] Each ssh error reproduced on `alexs-mbp-16`; the Tailscale one is from `ae-lp-3643`. That
+      added `Host key verification failed`, which `BatchMode=yes` causes on any first connection
 
 ### Phase 3: The flow, this computer ❌
 - [ ] Rebuild `/onboarding` as steps: Where, Which factories, You're set
