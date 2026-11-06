@@ -522,6 +522,42 @@ HostName not-a-host
 
 #[cfg(test)]
 mod remote {
+    /// A newcomer's run, command by command, against a real host:
+    /// `HOME=/tmp/cr CR_TEST_SSH=<alias> <test binary> --ignored first_run --nocapture`.
+    /// Writes a config, so it refuses a real HOME.
+    #[test]
+    #[ignore]
+    fn first_run_on_an_empty_home() {
+        let home = crate::central_config::home_dir();
+        assert!(home.starts_with("/tmp"), "HOME must be a scratch folder under /tmp, not {}", home.display());
+        let ssh = std::env::var("CR_TEST_SSH").expect("CR_TEST_SSH");
+        tauri::async_runtime::block_on(async {
+            assert!(crate::commands::load_config().await.unwrap().is_none(), "HOME must start empty");
+            println!("ssh hosts {:?}", super::list_ssh_hosts().await);
+            let here = super::running_factories("local".into()).await.unwrap();
+            println!("this computer: pm2 {} running {}", here.pm2_found, here.running.len());
+
+            let found = super::detect_node(ssh.clone()).await.unwrap();
+            let best = &found.candidates[0];
+            println!("node {} {} pm2 {} plain {} ask {}", best.path, best.version, best.pm2, best.plain, found.ask);
+            let node = (!best.plain).then(|| best.path.clone());
+
+            let check = super::test_host(ssh.clone(), node.clone()).await.unwrap();
+            assert!(check.pm2_found);
+            crate::commands::add_host(ssh.clone(), ssh.clone(), node).await.unwrap();
+
+            let running = super::running_factories(ssh.clone()).await.unwrap().running;
+            let first = &running[0];
+            let path = super::check_factory_path(ssh.clone(), first.path.clone()).await.unwrap();
+            assert!(path.exists && path.main.is_some());
+            let cfg = crate::commands::add_factory(ssh.clone(), None, first.path.clone()).await.unwrap();
+
+            let host = cfg.hosts.iter().find(|h| h.name == ssh).unwrap();
+            println!("saved {} node {:?} factories {:?}", host.name, host.node, host.factories.iter().map(|f| &f.path).collect::<Vec<_>>());
+            assert_eq!(host.factories.len(), 1);
+        });
+    }
+
     /// `CR_TEST_HOST=<host> CR_TEST_FACTORY=<factory> cargo test -- --ignored remote_checks --nocapture`
     /// — against a host and factory in the developer's config. Set
     /// `CR_TEST_FILE` (relative to the factory) to also fetch a file.

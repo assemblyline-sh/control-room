@@ -14,7 +14,9 @@ export default function ErrorNote({ error, computer, onRetry }) {
   return (
     <div style={boxStyle}>
       <div style={titleStyle}>{title}</div>
-      <div style={hintStyle}>{hint}</div>
+      <div style={hintStyle}>
+        {hint.split("`").map((part, i) => (i % 2 ? <code key={i}>{part}</code> : part))}
+      </div>
       <details style={detailsStyle}>
         <summary style={{ cursor: "pointer" }}>Details</summary>
         <pre style={preStyle}>{details}</pre>

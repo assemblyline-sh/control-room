@@ -134,7 +134,16 @@ export default function StepConnecting({ ssh, onBack, onConnected }) {
   const testing = node !== null && !check && !check_error;
   const show_choice = !!detection && (detection.ask || no_node || picking || !!check_error);
 
-  const node_text = using ? `Found Node ${using.version.replace(/^v/, "")}` : check ? `Using ${node}` : no_node ? "No Node found" : "Node";
+  const reach_text = detection ? `Reached ${computer}` : reach_error ? `Couldn't reach ${computer}` : `Reaching ${computer}…`;
+  const node_text = check_error
+    ? "Couldn't use that Node"
+    : using
+      ? `Found Node ${using.version.replace(/^v/, "")}`
+      : check
+        ? `Using ${node}`
+        : no_node
+          ? "No Node found"
+          : "Node";
   /** @type {CheckState} */
   const node_state = check ? "ok" : check_error ? "fail" : testing ? "busy" : no_node ? "fail" : "waiting";
   /** @type {CheckState} */
@@ -142,10 +151,10 @@ export default function StepConnecting({ ssh, onBack, onConnected }) {
 
   return (
     <>
-      <h1 style={headingStyle}>Connecting to {computer}</h1>
+      <h1 style={headingStyle}>{check ? `Connected to ${computer}` : `Connecting to ${computer}`}</h1>
       <SignInPrompt host={ssh} />
       <div style={checksStyle}>
-        <Check state={detection ? "ok" : reach_error ? "fail" : "busy"} text={detection ? `Reached ${computer}` : `Reaching ${computer}…`} />
+        <Check state={detection ? "ok" : reach_error ? "fail" : "busy"} text={reach_text} />
         <Check state={node_state} text={node_text} />
         <Check state={pm2_state} text={check && !check.pm2_found ? "pm2 isn't available" : check ? "Found pm2" : "pm2"} />
       </div>

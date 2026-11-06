@@ -36,7 +36,8 @@ Tauri 2 Rust commands — every factory command takes (host, factory name)
    │                                       clear_workpieces (re-plans, refuses, then Source::remove)
    ├── requeue.rs                          requeue_workpieces (failed/done → own input; ids
    │                                       re-resolved from fresh state, then Source::requeue)
-   ├── host_commands.rs                    test_host / check_factory_path / open_terminal / fetch_file;
+   ├── host_commands.rs                    test_host / running_factories / check_factory_path /
+   │                                       detect_node / list_ssh_hosts / open_terminal / fetch_file;
    │                                       terminal_dir (factory folder for both terminals)
    ├── terminal.rs                         integrated terminal: PTY sessions (portable-pty) running
    │                                       the user's shell, or `ssh -tt` on remote hosts
@@ -64,6 +65,8 @@ Tauri 2 Rust commands — every factory command takes (host, factory name)
 
 The React layer **never** imports `@tauri-apps/api/*` directly. All Tauri calls go through `src/lib/tauri-api.js`, which exports typed (via JSDoc) wrappers around `invoke()`. New IPC entry points must be added there.
 
+**Add rule:** `src/components/AddFlow/` is the one way to add a host or a factory, one question per screen: full-page at `/onboarding` on first run, an overlay from the rail after that, so open tabs and terminals survive an add. Every screen has a default, a way to choose otherwise and a next step. Failures go through `explainError` (`src/lib/explain-error.js`), which keeps the original text under Details. `detect_node` picks the `node` with pm2 beside it, since plain ssh often finds the wrong one; `node:` is saved only when plain ssh wouldn't find it.
+
 UI shape: `src/app/page.jsx` boots config and renders `<Shell />`. `Shell` owns the config, SSH-status, tabs and tree state via context providers (`src/state/{config,ssh,tabs,tree}-context.jsx`). Every tab is on the window's host. The left pane is `src/components/Rail/` (recursive tree, lazy children); the right pane is `src/components/TabStrip/` + `src/components/TabContent.jsx`, which switches on `resource.type` and renders one `src/views/<type>/View<X>.jsx` per type. Every open tab stays mounted and only the active one is shown, so a tab keeps its open groups, filters and scroll. Data tabs are hidden in React's `<Activity>`, which pauses their effects (fetching, polling) until shown; terminal and logs tabs (`ALWAYS_ON` in `TabContent.jsx`) keep running while hidden, so a shell session or log tail survives a switch, and read `useTabVisible()` (`src/state/tab-visible.js`) to refit or flag attention. Each view consumes a matching `use<X>Data.js` hook that wraps the relevant monitor command via `src/lib/use-fetcher.js`, a window-wide cache keyed by query (stale-while-revalidate). The `ResourceId` discriminated union in `src/lib/resource-id.js` is the single shape every layer agrees on.
 
 ## Common commands
@@ -75,8 +78,10 @@ UI shape: `src/app/page.jsx` boots config and renders `<Shell />`. `Shell` owns 
 | `npm run dev` | Next.js only (browser-only; `invoke()` will throw) |
 | `npm run typecheck` | `tsc -p jsconfig.json` (uses `@ts-check` headers) |
 | `npm run lint` / `npm run format` | ESLint CLI (`eslint.config.mjs`, flat config) / Prettier |
+| `npm test` | JS unit tests (`tests/`, `node --test`) |
 | `npm run check:probe` | The bundled probe is al-control's, byte for byte (`-- --copy` to update it after bumping the pin) |
 | `cargo test -- --ignored error_key_parity` / `plan_every_host` / `every_configured_factory` / `counts_timing` | Real-data checks against your config (in `src-tauri`) |
+| `HOME=/tmp/cr CR_TEST_SSH=<alias> <test binary> --ignored first_run --nocapture` | A newcomer's run against a real host; writes a config, so it refuses a HOME outside `/tmp` |
 | `CR_UI_FIXTURES=… cargo test -- --ignored dump_ui_fixtures` | Fixtures for rendering the UI in a browser with `scripts/browser-mock.js` |
 
 ## Engineering standards applied

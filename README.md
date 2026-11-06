@@ -72,6 +72,20 @@ xattr -dr com.apple.quarantine "/Applications/Control Room.app"
 Or open System Settings → Privacy & Security and click **Open Anyway**. The install script
 above doesn't hit this: `curl` downloads aren't quarantined.
 
+## First run
+
+With no factories yet, the app asks where they run and takes you through it, one question at a
+time:
+
+- **On this computer:** running factories are listed and ticked, or you pick a folder.
+- **On another computer:** pick it from your SSH settings or type its name. The app finds `node`
+  and pm2 there, then lists the running factories, or you enter a folder. `ssh <name>` has to work
+  in a terminal without a password.
+- **No factory yet:** it points you to the [quickstart](https://assemblyline.sh/docs/quickstart).
+
+The same screens open later from **+** (add a computer) and **+ Add factory** in the sidebar.
+Right-click a factory to remove it from Control Room.
+
 ## Config
 
 `~/.al/al-control/config.yml`, the same file as al-control:
@@ -90,9 +104,8 @@ hosts:
         keep: [VM5/done]      # bins a clear must never touch
 ```
 
-With no factories anywhere, the app opens on a page to add local factory folders. Hosts and
-remote factories can be added from the rail. The app never writes `current_host`: the host is
-per window, so nothing in the app can retarget the CLI.
+You don't need to write this by hand. The app never writes `current_host`: the host is per
+window, so nothing in the app can retarget the CLI.
 
 ## Develop
 
@@ -106,6 +119,7 @@ npm run tauri:build   # installers in src-tauri/target/release/bundle/
 npm run typecheck
 npm run lint
 npm run check:probe   # the bundled probe is al-control's, byte for byte
+npm test              # JS unit tests
 cd src-tauri && cargo test
 ```
 

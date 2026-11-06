@@ -45,7 +45,7 @@ export default function TabContent() {
       <div style={emptyStyle}>
         <p style={emptyTitleStyle}>No tab open</p>
         <p style={emptyHintStyle}>
-          Click a factory (or anything below it) in the rail to open it as a tab.
+          Click a factory (or anything below it) in the sidebar to open it as a tab.
         </p>
       </div>
     );

@@ -1,6 +1,6 @@
 # First-run onboarding
 
-## Status: IN PROGRESS (~80%)
+## Status: IN PROGRESS (~95%)
 
 Take someone who has just installed Control Room to a working factory view without a moment of
 "what is this?" or "what do I do now?". This WIP replaces the local-only welcome page and the two
@@ -248,14 +248,18 @@ Each phase is committed on `alexs-mbp-16`. Git never runs on `alex-linux-pc`.
 - [x] Remove moves to the factory's right-click menu: the old page held the only Remove button
 - [x] Rail's empty state says what to do, above "+ Add factory"
 
-### Phase 6: A newcomer's run ❌
-- [ ] Before and after screenshots of each screen and failure, read back (`scripts/browser-mock.js`)
-- [ ] Empty-config run on a Mac: `HOME=/tmp/cr` with the built app. Keep the path short for the
-      socket limit
-- [ ] Walk the four routes: factory here, factory elsewhere, no factory, and a host that fails
-- [ ] Alex tries it on `ae-lp-3643`, with the question: where did you stop and wonder?
-- [ ] README: Install and first run match the flow
-- [ ] CHANGELOG, release, install on both Macs, delete this WIP
+### Phase 6: A newcomer's run 🔄
+- [x] Every screen and failure driven in a browser with mocked commands, and the screenshots read
+      back. That found literal backticks, a failed row still saying "Reaching…", and "rail" in the
+      first text after finishing; all fixed. No before shots: the old page is gone, not changed
+- [x] Empty-config run with real ssh: `first_run_on_an_empty_home` from `alexs-mbp-16` to
+      `alex-linux-pc` found Node 22.21.0 without asking and wrote a config al-control reads. This
+      covers the commands, not the native window
+- [x] Walk the four routes: factory here, factory elsewhere, no factory, and a host that fails
+- [x] README: first run matches the flow; `CLAUDE.md`: the Add rule
+- [ ] CHANGELOG, release, push, install on both Macs
+- [ ] Alex tries it in the real app, with the question: where did you stop and wonder? Then delete
+      this WIP
 
 ## Open Questions
 
