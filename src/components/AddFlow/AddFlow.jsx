@@ -2,6 +2,8 @@
 "use client";
 
 import { useState } from "react";
+import StepComputer from "@/components/AddFlow/StepComputer";
+import StepConnecting from "@/components/AddFlow/StepConnecting";
 import StepDone from "@/components/AddFlow/StepDone";
 import StepFactories from "@/components/AddFlow/StepFactories";
 import StepNoFactory from "@/components/AddFlow/StepNoFactory";
@@ -11,6 +13,8 @@ import StepWhere from "@/components/AddFlow/StepWhere";
  * @typedef {(
  *   { step: 'where' } |
  *   { step: 'no-factory' } |
+ *   { step: 'computer' } |
+ *   { step: 'connecting', ssh: string } |
  *   { step: 'factories', host: string, computer: string } |
  *   { step: 'done', host: string, computer: string, names: string[] }
  * )} Step
@@ -41,11 +45,29 @@ export default function AddFlow({ start, onFinish, onCancel }) {
           <StepWhere
             onNext={(where) => {
               if (where === "none") go({ step: "no-factory" });
+              else if (where === "elsewhere") go({ step: "computer" });
               else go({ step: "factories", host: "local", computer: "this computer" });
             }}
           />
         )}
         {step.step === "no-factory" && <StepNoFactory onBack={() => back?.()} />}
+        {step.step === "computer" && (
+          <StepComputer
+            onBack={back}
+            onNext={(choice) => {
+              if ("saved" in choice) go({ step: "factories", host: choice.saved, computer: choice.saved });
+              else go({ step: "connecting", ssh: choice.ssh });
+            }}
+          />
+        )}
+        {step.step === "connecting" && (
+          <StepConnecting
+            key={step.ssh}
+            ssh={step.ssh}
+            onBack={back}
+            onConnected={(host) => go({ step: "factories", host, computer: host })}
+          />
+        )}
         {step.step === "factories" && (
           <StepFactories
             key={step.host}

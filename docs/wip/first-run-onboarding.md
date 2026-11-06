@@ -1,6 +1,6 @@
 # First-run onboarding
 
-## Status: IN PROGRESS (~45%)
+## Status: IN PROGRESS (~65%)
 
 Take someone who has just installed Control Room to a working factory view without a moment of
 "what is this?" or "what do I do now?". This WIP replaces the local-only welcome page and the two
@@ -233,13 +233,13 @@ Each phase is committed on `alexs-mbp-16`. Git never runs on `alex-linux-pc`.
 - [x] "I don't have a factory yet" screen, with its docs link checked
 - [x] Welcome copy per The bar; config path moved to You're set
 
-### Phase 4: The flow, another computer ❌
-- [ ] Which computer: dropdown from `list_ssh_hosts`, "Type a name…", saved hosts included
-- [ ] Connecting screen with live checks and every row of its table
-- [ ] `node` dropdown and "Other path…", with a typed path checked before use
-- [ ] Which factories: running ones ticked, "Add by path" checked over ssh
-- [ ] `node:` saved only when needed
-- [ ] Finish opens on the added host, including when `local` has no factories
+### Phase 4: The flow, another computer ✅
+- [x] Which computer: dropdown from `list_ssh_hosts`, "Type a name…", saved hosts included
+- [x] Connecting screen with live checks and every row of its table
+- [x] `node` dropdown and "Other path…", with a typed path checked before use
+- [x] Which factories: running ones ticked, "Add by path" checked over ssh
+- [x] `node:` saved only when needed
+- [x] Finish opens on the added host, including when `local` has no factories
 
 ### Phase 5: One way in ❌
 - [ ] Rail `+` opens Which computer; "Add factory" opens the host's Which factories
