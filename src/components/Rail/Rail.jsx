@@ -10,6 +10,7 @@ import { useConfig } from "@/state/config-context";
 import { useHostSsh } from "@/state/ssh-context";
 import { useTabs } from "@/state/tabs-context";
 import { useHostTotals } from "@/state/counts-store";
+import { version } from "../../../package.json";
 
 /**
  * Tree rail: host picker (opens or focuses that host's window — a window
@@ -103,6 +104,7 @@ export default function Rail() {
       >
         + Add factory
       </button>
+      <p style={versionStyle}>v{version}</p>
       {adding && (
         <AddFlow
           start={adding}
@@ -244,3 +246,6 @@ const addStyle = {
   fontSize: 12,
   cursor: "pointer",
 };
+
+/** @type {React.CSSProperties} */
+const versionStyle = { margin: "8px 16px 0", fontSize: 11, color: "var(--muted-foreground)" };
