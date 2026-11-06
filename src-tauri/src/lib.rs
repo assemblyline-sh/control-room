@@ -45,6 +45,8 @@ pub fn run() {
             commands::remove_factory,
             commands::add_host,
             host_commands::test_host,
+            host_commands::detect_node,
+            host_commands::list_ssh_hosts,
             host_commands::check_factory_path,
             host_commands::open_terminal,
             host_commands::fetch_file,

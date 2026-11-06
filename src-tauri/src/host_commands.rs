@@ -11,34 +11,150 @@ use std::path::{Component, Path, PathBuf};
 use crate::source::{probe, ssh};
 
 #[derive(Serialize)]
+pub struct RunningFactory {
+    /// Directory name, the name a new factory gets by default.
+    pub name: String,
+    /// Its folder on the host.
+    pub path: String,
+}
+
+#[derive(Serialize)]
 pub struct HostCheck {
     /// pm2 answered — start/stop/logs will work.
     pub pm2_found: bool,
-    /// factories running there, by directory name.
-    pub running: Vec<String>,
+    pub running: Vec<RunningFactory>,
+}
+
+/// A host for an alias not (yet) in the config.
+fn remote_host(ssh: String, node: Option<String>) -> Result<HostEntry, CommandError> {
+    if ssh.is_empty() || ssh.starts_with('-') {
+        return Err(CommandError::Config(format!("Invalid ssh alias '{}'.", ssh)));
+    }
+    Ok(HostEntry { name: ssh.clone(), is_local: false, ssh: Some(ssh), node: node.filter(|n| !n.is_empty()), factories: vec![] })
 }
 
 /// One probe round trip to an alias not (yet) in the config.
 #[tauri::command]
 pub async fn test_host(ssh: String, node: Option<String>) -> Result<HostCheck, CommandError> {
-    if ssh.is_empty() || ssh.starts_with('-') {
-        return Err(CommandError::Config(format!("Invalid ssh alias '{}'.", ssh)));
-    }
-    let host = HostEntry {
-        name: ssh.clone(),
-        is_local: false,
-        ssh: Some(ssh),
-        node: node.filter(|n| !n.is_empty()),
-        factories: vec![],
-    };
+    let host = remote_host(ssh, node)?;
     let data = probe::probe(&host, serde_json::json!({ "type": "factories", "paths": {} }))?;
     Ok(HostCheck {
         pm2_found: data["pm2_found"] == true,
         running: data["procs"]
             .as_array()
-            .map(|a| a.iter().filter_map(|p| p["factory"].as_str().map(String::from)).collect())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|p| Some(RunningFactory { name: p["factory"].as_str()?.into(), path: p["cwd"].as_str()?.into() }))
+                    .collect()
+            })
             .unwrap_or_default(),
     })
+}
+
+/// Every `node` a host offers. Run with `sh -s`, so it doesn't depend on the
+/// user's shell. Over plain ssh a host often finds the wrong `node`, or none:
+/// nvm loads from .bashrc and Homebrew from .zprofile, so the user's own
+/// shell is asked too. That shell gets /dev/null, or it reads this script.
+const DETECT_NODE: &str = r#"report() {
+  [ -f "$2" ] && [ -x "$2" ] || return 0
+  version=$("$2" --version 2>/dev/null) || return 0
+  pm2=no
+  [ -e "$(dirname "$2")/pm2" ] && pm2=yes
+  printf 'AL_NODE\t%s\t%s\t%s\t%s\n' "$1" "$2" "$version" "$pm2"
+}
+report plain "$(command -v node 2>/dev/null)"
+report shell "$("${SHELL:-/bin/sh}" -ilc 'printf "AL_PATH:%s\n" "$(command -v node)"' </dev/null 2>/dev/null | sed -n 's/^.*AL_PATH://p' | tail -n 1)"
+for node in "$HOME"/.nvm/versions/node/*/bin/node; do report nvm "$node"; done
+exit 0
+"#;
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct NodeCandidate {
+    pub path: String,
+    pub version: String,
+    /// pm2 sits beside it, so this is the `node` pm2 was installed with.
+    pub pm2: bool,
+    /// Plain ssh finds this one, so the host needs no `node:` in the config.
+    pub plain: bool,
+    #[serde(skip)]
+    shell: bool,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct NodeDetection {
+    /// Best first.
+    pub candidates: Vec<NodeCandidate>,
+    /// More than one could be right, so the user picks.
+    pub ask: bool,
+}
+
+/// `AL_NODE` lines to candidates: one per path, those with pm2 first, then the
+/// one the user's shell finds, then plain ssh's, then the newest.
+fn parse_node_candidates(out: &str) -> NodeDetection {
+    let mut candidates: Vec<NodeCandidate> = vec![];
+    for line in out.lines() {
+        let f: Vec<&str> = line.split('\t').collect();
+        let [marker, source, path, version, pm2] = f[..] else { continue };
+        if marker != "AL_NODE" {
+            continue;
+        }
+        let i = candidates.iter().position(|c| c.path == path).unwrap_or_else(|| {
+            candidates.push(NodeCandidate { path: path.into(), version: version.into(), pm2: pm2 == "yes", plain: false, shell: false });
+            candidates.len() - 1
+        });
+        candidates[i].plain |= source == "plain";
+        candidates[i].shell |= source == "shell";
+    }
+    candidates.sort_by_key(|c| {
+        let version: Vec<u32> = c.version.trim_start_matches('v').split('.').filter_map(|n| n.parse().ok()).collect();
+        (!c.pm2, !c.shell, !c.plain, std::cmp::Reverse(version))
+    });
+    let with_pm2 = candidates.iter().filter(|c| c.pm2).count();
+    let ask = candidates.len() > 1 && with_pm2 != 1;
+    NodeDetection { candidates, ask }
+}
+
+/// Which `node` to use on an ssh alias not (yet) in the config.
+#[tauri::command]
+pub async fn detect_node(ssh: String) -> Result<NodeDetection, CommandError> {
+    let host = remote_host(ssh, None)?;
+    probe::reported(&host, || {
+        let (code, out, err) = ssh::run(&host, "sh -s", DETECT_NODE)?;
+        if code == 255 {
+            return Err(probe::ssh_failed(&host, &err));
+        }
+        Ok(parse_node_candidates(&String::from_utf8_lossy(&out)))
+    })
+}
+
+/// `Host` names in ssh config text, in order. Patterns aren't places to
+/// connect to, so they're left out.
+fn parse_ssh_hosts(config: &str) -> Vec<String> {
+    let mut hosts: Vec<String> = vec![];
+    for line in config.lines() {
+        let line = line.trim();
+        let Some((keyword, rest)) = line.split_once(|c: char| c.is_whitespace() || c == '=') else { continue };
+        if !keyword.eq_ignore_ascii_case("host") {
+            continue;
+        }
+        for name in rest.trim_start_matches(|c: char| c.is_whitespace() || c == '=').split_whitespace() {
+            let name = name.trim_matches('"');
+            if name.starts_with('#') {
+                break;
+            }
+            if !name.contains(['*', '?', '!']) && !hosts.iter().any(|h| h == name) {
+                hosts.push(name.to_string());
+            }
+        }
+    }
+    hosts
+}
+
+/// The computers in this user's ssh config, to choose from.
+#[tauri::command]
+pub async fn list_ssh_hosts() -> Vec<String> {
+    let file = crate::central_config::home_dir().join(".ssh").join("config");
+    parse_ssh_hosts(&std::fs::read_to_string(file).unwrap_or_default())
 }
 
 #[derive(Serialize)]
@@ -252,6 +368,126 @@ pub fn lexical(p: &Path) -> PathBuf {
 }
 
 #[cfg(test)]
+mod detection {
+    use super::*;
+
+    fn paths(d: &NodeDetection) -> Vec<&str> {
+        d.candidates.iter().map(|c| c.path.as_str()).collect()
+    }
+
+    /// What `alex-linux-pc` reports: plain ssh finds an old system node, and
+    /// only the shell's nvm node has pm2.
+    const NVM_HOST: &str = "AL_NODE\tplain\t/usr/bin/node\tv18.19.1\tno
+AL_NODE\tshell\t/h/.nvm/versions/node/v22.21.0/bin/node\tv22.21.0\tyes
+AL_NODE\tnvm\t/h/.nvm/versions/node/v20.19.6/bin/node\tv20.19.6\tno
+AL_NODE\tnvm\t/h/.nvm/versions/node/v22.21.0/bin/node\tv22.21.0\tyes
+AL_NODE\tnvm\t/h/.nvm/versions/node/v25.0.0/bin/node\tv25.0.0\tno
+";
+
+    #[test]
+    fn the_only_node_with_pm2_wins_without_asking() {
+        let d = parse_node_candidates(NVM_HOST);
+        assert!(!d.ask);
+        assert_eq!(paths(&d)[0], "/h/.nvm/versions/node/v22.21.0/bin/node");
+        assert_eq!(d.candidates.len(), 4, "the shell and nvm reports are the same node");
+        assert!(!d.candidates[0].plain);
+    }
+
+    #[test]
+    fn several_with_pm2_are_a_choice_led_by_the_shells() {
+        let d = parse_node_candidates(
+            "AL_NODE\tnvm\t/n/20/node\tv20.1.0\tyes\nAL_NODE\tshell\t/n/18/node\tv18.1.0\tyes\nAL_NODE\tnvm\t/n/24/node\tv24.1.0\tno\n",
+        );
+        assert!(d.ask);
+        assert_eq!(paths(&d), ["/n/18/node", "/n/20/node", "/n/24/node"]);
+    }
+
+    #[test]
+    fn none_with_pm2_is_a_choice_led_by_the_newest_after_the_shells() {
+        let d = parse_node_candidates("AL_NODE\tnvm\t/n/9/node\tv9.0.0\tno\nAL_NODE\tnvm\t/n/10/node\tv10.0.0\tno\n");
+        assert!(d.ask);
+        assert_eq!(paths(&d), ["/n/10/node", "/n/9/node"]);
+    }
+
+    #[test]
+    fn one_node_is_no_choice_even_without_pm2() {
+        let d = parse_node_candidates("AL_NODE\tplain\t/usr/bin/node\tv22.0.0\tno\nAL_NODE\tshell\t/usr/bin/node\tv22.0.0\tno\n");
+        assert!(!d.ask);
+        assert_eq!(d.candidates.len(), 1);
+        assert!(d.candidates[0].plain);
+    }
+
+    #[test]
+    fn no_node_and_shell_noise_give_nothing() {
+        let d = parse_node_candidates("Welcome to Ubuntu\nlast login: today\n");
+        assert_eq!(d, NodeDetection { candidates: vec![], ask: false });
+    }
+
+    /// The script itself, against a fake home: a node on PATH with no pm2,
+    /// and an nvm one with pm2 that only the user's shell finds.
+    #[cfg(unix)]
+    #[test]
+    fn the_script_finds_node_from_plain_ssh_the_shell_and_nvm() {
+        use std::os::unix::fs::PermissionsExt;
+        let home = std::env::temp_dir().join(format!("cr-detect-{}", std::process::id()));
+        let fake = |dir: &Path, version: &str| {
+            std::fs::create_dir_all(dir).unwrap();
+            let node = dir.join("node");
+            std::fs::write(&node, format!("#!/bin/sh\necho {}\n", version)).unwrap();
+            std::fs::set_permissions(&node, std::fs::Permissions::from_mode(0o755)).unwrap();
+        };
+        let system = home.join("system");
+        let nvm = home.join(".nvm/versions/node/v22.0.0/bin");
+        fake(&system, "v18.0.0");
+        fake(&nvm, "v22.0.0");
+        std::fs::write(nvm.join("pm2"), "").unwrap();
+        let shell = home.join("fakeshell");
+        std::fs::write(&shell, format!("#!/bin/sh\necho 'a banner'\ncat >/dev/null\nPATH={}:$PATH exec /bin/sh -c \"$2\"\n", nvm.display())).unwrap();
+        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let mut child = std::process::Command::new("/bin/sh")
+            .args(["-s"])
+            .env_clear()
+            .env("HOME", &home)
+            .env("SHELL", &shell)
+            .env("PATH", format!("{}:/usr/bin:/bin", system.display()))
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        use std::io::Write;
+        child.stdin.take().unwrap().write_all(DETECT_NODE.as_bytes()).unwrap();
+        let out = child.wait_with_output().unwrap();
+        let _ = std::fs::remove_dir_all(&home);
+
+        let d = parse_node_candidates(&String::from_utf8_lossy(&out.stdout));
+        assert!(!d.ask, "{:?}", d);
+        assert_eq!(d.candidates.len(), 2, "{:?}", d);
+        assert_eq!(d.candidates[0].version, "v22.0.0");
+        assert!(d.candidates[0].pm2 && d.candidates[0].shell && !d.candidates[0].plain);
+        assert!(d.candidates[1].plain && !d.candidates[1].pm2);
+    }
+
+    #[test]
+    fn ssh_hosts_are_the_named_ones_in_order() {
+        let config = "# a comment
+Host alex-linux-pc
+  HostName 100.1.2.3
+host  kiosk1 kiosk2 # two at once
+Host=eq-host
+Host \"quoted\"
+Host *.internal !nope
+Host *
+  ForwardAgent no
+Host alex-linux-pc
+Match host x
+HostName not-a-host
+";
+        assert_eq!(parse_ssh_hosts(config), ["alex-linux-pc", "kiosk1", "kiosk2", "eq-host", "quoted"]);
+    }
+}
+
+#[cfg(test)]
 mod remote {
     /// `CR_TEST_HOST=<host> CR_TEST_FACTORY=<factory> cargo test -- --ignored remote_checks --nocapture`
     /// — against a host and factory in the developer's config. Set
@@ -265,9 +501,10 @@ mod remote {
         tauri::async_runtime::block_on(async {
             let ssh = r.host.ssh.clone().unwrap_or_default();
             let h = super::test_host(ssh.clone(), r.host.node.clone()).await.unwrap();
-            println!("pm2_found {} running {:?}", h.pm2_found, h.running);
-            let bare = super::test_host(ssh, None).await.unwrap();
+            println!("pm2_found {} running {:?}", h.pm2_found, h.running.iter().map(|r| format!("{} {}", r.name, r.path)).collect::<Vec<_>>());
+            let bare = super::test_host(ssh.clone(), None).await.unwrap();
             println!("without node: pm2_found {}", bare.pm2_found);
+            println!("{:#?}", super::detect_node(ssh).await.unwrap());
             if let Ok(file) = std::env::var("CR_TEST_FILE") {
                 let fetched = super::fetch_file(host_name.clone(), factory.clone(), file).await.unwrap();
                 println!("fetched {}", fetched);

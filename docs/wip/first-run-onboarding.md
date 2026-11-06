@@ -1,6 +1,6 @@
 # First-run onboarding
 
-## Status: NOT STARTED
+## Status: IN PROGRESS (~15%)
 
 Take someone who has just installed Control Room to a working factory view without a moment of
 "what is this?" or "what do I do now?". This WIP replaces the local-only welcome page and the two
@@ -208,14 +208,14 @@ ticks mean it works, not just that a file exists.
 
 Each phase is committed on `alexs-mbp-16`. Git never runs on `alex-linux-pc`.
 
-### Phase 1: Detection commands ❌
-- [ ] `detect_node(ssh)` in `host_commands.rs`, with the script from Node detection
-- [ ] Pure parse-and-rank function, with Rust tests: the table above, one with pm2, several, none,
+### Phase 1: Detection commands ✅
+- [x] `detect_node(ssh)` in `host_commands.rs`, with the script from Node detection
+- [x] Pure parse-and-rank function, with Rust tests: the table above, one with pm2, several, none,
       a banner around the markers
-- [ ] `list_ssh_hosts()`: `Host` lines from `~/.ssh/config`, skipping wildcards, with tests
-- [ ] `test_host` returns running factories with their folders as well as names
-- [ ] Wrappers in `src/lib/tauri-api.js`
-- [ ] Real check: `detect_node` from `ae-lp-3643` picks 22.21.0 on `alex-linux-pc`
+- [x] `list_ssh_hosts()`: `Host` lines from `~/.ssh/config`, skipping wildcards, with tests
+- [x] `test_host` returns running factories with their folders as well as names
+- [x] Wrappers in `src/lib/tauri-api.js`
+- [x] Real check: `detect_node` from `ae-lp-3643` picks 22.21.0 on `alex-linux-pc`
 
 ### Phase 2: Errors that say what to do ❌
 - [ ] `explainSshError` mapping the table above, keeping the original for Details, with tests

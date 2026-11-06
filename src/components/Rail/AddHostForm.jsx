@@ -25,7 +25,7 @@ export default function AddHostForm({ onDone }) {
       const r = await testHost(ssh.trim(), node.trim());
       set_result(
         r.pm2_found
-          ? { ok: true, text: `Connected. pm2 found${r.running.length ? `; running: ${r.running.join(", ")}` : ""}.` }
+          ? { ok: true, text: `Connected. pm2 found${r.running.length ? `; running: ${r.running.map((f) => f.name).join(", ")}` : ""}.` }
           : { ok: false, text: "Connected, but pm2 isn't on PATH over ssh. Set node to the node pm2 was installed with (`which node` in a shell there)." },
       );
     } catch (err) {

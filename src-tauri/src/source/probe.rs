@@ -42,14 +42,24 @@ pub fn probe_all(host: &HostEntry, queries: &[serde_json::Value]) -> Result<Vec<
     if host.is_local {
         return run_local(host, queries);
     }
+    reported(host, || run_remote(host, queries))
+}
+
+/// Run a remote call between `ssh-call` start and ok / error events.
+pub fn reported<T>(host: &HostEntry, call: impl FnOnce() -> Result<T, CommandError>) -> Result<T, CommandError> {
     events::emit("ssh-call", SshCall { host: &host.name, phase: "start", message: None });
-    let result = run_remote(host, queries);
+    let result = call();
     let (phase, message) = match &result {
         Ok(_) => ("ok", None),
         Err(e) => ("error", Some(e.to_string())),
     };
     events::emit("ssh-call", SshCall { host: &host.name, phase, message });
     result
+}
+
+/// ssh's own failure (exit 255) as an error, with what it printed.
+pub fn ssh_failed(host: &HostEntry, err: &[String]) -> CommandError {
+    CommandError::Ssh(format!("ssh to {} ({}) failed: {}", host.name, host.ssh.as_deref().unwrap_or(""), ssh::last_lines(err)))
 }
 
 fn script(queries: &[serde_json::Value]) -> String {
@@ -87,12 +97,7 @@ fn run_remote(host: &HostEntry, queries: &[serde_json::Value]) -> Result<Vec<ser
     let remote_cmd = format!("{}{} --input-type=module -", ssh::env_prefix(host), node);
     let (code, out, err) = ssh::run(host, &remote_cmd, &script(queries))?;
     if code == 255 {
-        return Err(CommandError::Ssh(format!(
-            "ssh to {} ({}) failed: {}",
-            host.name,
-            host.ssh.as_deref().unwrap_or(""),
-            ssh::last_lines(&err)
-        )));
+        return Err(ssh_failed(host, &err));
     }
     if code == 127 {
         return Err(CommandError::Ssh(format!(

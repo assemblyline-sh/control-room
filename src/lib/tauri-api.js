@@ -483,7 +483,13 @@ export async function openHostWindow(host) {
 /**
  * @typedef {Object} HostCheck
  * @property {boolean} pm2_found - false usually means `node:` is needed (nvm installs are off PATH over ssh)
- * @property {string[]} running - factories running on the host
+ * @property {RunningFactory[]} running - factories running on the host
+ */
+
+/**
+ * @typedef {Object} RunningFactory
+ * @property {string} name - directory name
+ * @property {string} path - its folder on the host
  */
 
 /**
@@ -494,6 +500,37 @@ export async function openHostWindow(host) {
  */
 export async function testHost(ssh, node) {
   return invoke("test_host", { ssh, node: node || null });
+}
+
+/**
+ * @typedef {Object} NodeCandidate
+ * @property {string} path
+ * @property {string} version - as `node --version` prints it
+ * @property {boolean} pm2 - pm2 sits beside it
+ * @property {boolean} plain - plain ssh finds it, so the host needs no `node:`
+ */
+
+/**
+ * @typedef {Object} NodeDetection
+ * @property {NodeCandidate[]} candidates - best first
+ * @property {boolean} ask - more than one could be right, so the user picks
+ */
+
+/**
+ * Every `node` on an ssh alias, before it's saved as a host.
+ * @param {string} ssh
+ * @returns {Promise<NodeDetection>}
+ */
+export async function detectNode(ssh) {
+  return invoke("detect_node", { ssh });
+}
+
+/**
+ * The computers in this user's ssh config.
+ * @returns {Promise<string[]>}
+ */
+export async function listSshHosts() {
+  return invoke("list_ssh_hosts");
 }
 
 /**
