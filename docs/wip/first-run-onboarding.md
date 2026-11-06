@@ -1,6 +1,6 @@
 # First-run onboarding
 
-## Status: IN PROGRESS (~25%)
+## Status: IN PROGRESS (~45%)
 
 Take someone who has just installed Control Room to a working factory view without a moment of
 "what is this?" or "what do I do now?". This WIP replaces the local-only welcome page and the two
@@ -226,12 +226,12 @@ Each phase is committed on `alexs-mbp-16`. Git never runs on `alex-linux-pc`.
 - [x] Each ssh error reproduced on `alexs-mbp-16`; the Tailscale one is from `ae-lp-3643`. That
       added `Host key verification failed`, which `BatchMode=yes` causes on any first connection
 
-### Phase 3: The flow, this computer ❌
-- [ ] Rebuild `/onboarding` as steps: Where, Which factories, You're set
-- [ ] Local running factories from the probe, ticked by default
-- [ ] Local folders checked as factories (the probe's `factories` query with a candidate path)
-- [ ] "I don't have a factory yet" screen, with its docs link checked
-- [ ] Welcome copy per The bar; config path moved to You're set
+### Phase 3: The flow, this computer ✅
+- [x] Rebuild `/onboarding` as steps: Where, Which factories, You're set
+- [x] Local running factories from the probe, ticked by default
+- [x] Local folders checked as factories (the probe's `factories` query with a candidate path)
+- [x] "I don't have a factory yet" screen, with its docs link checked
+- [x] Welcome copy per The bar; config path moved to You're set
 
 ### Phase 4: The flow, another computer ❌
 - [ ] Which computer: dropdown from `list_ssh_hosts`, "Type a name…", saved hosts included

@@ -23,6 +23,18 @@ const ConfigContext = createContext(/** @type {ConfigContextValue | null} */ (nu
 const HOST_STORAGE_KEY = "control-room.host";
 
 /**
+ * The host the main window boots on next.
+ * @param {string} host
+ */
+export function rememberHost(host) {
+  try {
+    localStorage.setItem(HOST_STORAGE_KEY, host);
+  } catch {
+    // not remembered — fine
+  }
+}
+
+/**
  * Each window shows one host for its life. A window opened for a host has
  * it injected (`window.__CONTROL_ROOM_HOST__`, see windows.rs); the main window
  * takes the host last focused, remembered in localStorage. It never writes
@@ -57,13 +69,7 @@ export function ConfigProvider({ initial, children }) {
 
   useEffect(() => {
     claimWindowHost(host_name).catch(() => {});
-    const remember = () => {
-      try {
-        localStorage.setItem(HOST_STORAGE_KEY, host_name);
-      } catch {
-        // not remembered — fine
-      }
-    };
+    const remember = () => rememberHost(host_name);
     remember();
     window.addEventListener("focus", remember);
     return () => window.removeEventListener("focus", remember);

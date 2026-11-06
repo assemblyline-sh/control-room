@@ -503,6 +503,15 @@ export async function testHost(ssh, node) {
 }
 
 /**
+ * What's running on a host in the config, or on `local` even with no config yet.
+ * @param {string} host
+ * @returns {Promise<HostCheck>}
+ */
+export async function runningFactories(host) {
+  return invoke("running_factories", { host });
+}
+
+/**
  * @typedef {Object} NodeCandidate
  * @property {string} path
  * @property {string} version - as `node --version` prints it

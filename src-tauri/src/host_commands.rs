@@ -4,7 +4,7 @@
 
 use serde::Serialize;
 
-use crate::central_config::HostEntry;
+use crate::central_config::{HostEntry, LOCAL_HOST};
 use crate::commands::CommandError;
 use crate::resolve::resolve;
 use std::path::{Component, Path, PathBuf};
@@ -33,11 +33,22 @@ fn remote_host(ssh: String, node: Option<String>) -> Result<HostEntry, CommandEr
     Ok(HostEntry { name: ssh.clone(), is_local: false, ssh: Some(ssh), node: node.filter(|n| !n.is_empty()), factories: vec![] })
 }
 
-/// One probe round trip to an alias not (yet) in the config.
-#[tauri::command]
-pub async fn test_host(ssh: String, node: Option<String>) -> Result<HostCheck, CommandError> {
-    let host = remote_host(ssh, node)?;
-    let data = probe::probe(&host, serde_json::json!({ "type": "factories", "paths": {} }))?;
+/// A host from the config. `local` works before there is one: a new user's
+/// first look at this machine.
+fn configured_host(name: &str) -> Result<HostEntry, CommandError> {
+    let found = crate::central_config::load()?.and_then(|cfg| cfg.hosts.into_iter().find(|h| h.name == name));
+    match found {
+        Some(h) => Ok(h),
+        None if name == LOCAL_HOST => {
+            Ok(HostEntry { name: name.into(), is_local: true, ssh: None, node: None, factories: vec![] })
+        }
+        None => Err(CommandError::Config(format!("No host named '{}'.", name))),
+    }
+}
+
+/// One probe round trip: is pm2 there, and what's running?
+fn check_host(host: &HostEntry) -> Result<HostCheck, CommandError> {
+    let data = probe::probe(host, serde_json::json!({ "type": "factories", "paths": {} }))?;
     Ok(HostCheck {
         pm2_found: data["pm2_found"] == true,
         running: data["procs"]
@@ -49,6 +60,18 @@ pub async fn test_host(ssh: String, node: Option<String>) -> Result<HostCheck, C
             })
             .unwrap_or_default(),
     })
+}
+
+/// An alias not (yet) in the config.
+#[tauri::command]
+pub async fn test_host(ssh: String, node: Option<String>) -> Result<HostCheck, CommandError> {
+    check_host(&remote_host(ssh, node)?)
+}
+
+/// A host in the config, or `local`.
+#[tauri::command]
+pub async fn running_factories(host: String) -> Result<HostCheck, CommandError> {
+    check_host(&configured_host(&host)?)
 }
 
 /// Every `node` a host offers. Run with `sh -s`, so it doesn't depend on the
@@ -166,21 +189,14 @@ pub struct PathCheck {
     pub root: String,
 }
 
-/// Before adding a factory on a remote host: does the path exist there, and
-/// is it a factory?
+/// Before adding a factory: does the path exist there, and is it a factory?
 #[tauri::command]
 pub async fn check_factory_path(host: String, path: String) -> Result<PathCheck, CommandError> {
-    let cfg = crate::central_config::load()?.ok_or_else(|| CommandError::Config("No config yet.".into()))?;
-    let h = cfg
-        .hosts
-        .into_iter()
-        .find(|h| h.name == host)
-        .ok_or_else(|| CommandError::Config(format!("No host named '{}'.", host)))?;
-    if h.is_local {
-        let p = crate::central_config::expand_tilde(&path);
-        return Ok(PathCheck { exists: p.exists(), main: None, root: p.display().to_string() });
-    }
-    let data = probe::probe(&h, serde_json::json!({ "type": "factories", "paths": { "candidate": path } }))?;
+    path_check(&configured_host(&host)?, &path)
+}
+
+fn path_check(host: &HostEntry, path: &str) -> Result<PathCheck, CommandError> {
+    let data = probe::probe(host, serde_json::json!({ "type": "factories", "paths": { "candidate": path } }))?;
     let w = &data["factories"][0];
     Ok(PathCheck {
         exists: w["exists"] == true,
@@ -466,6 +482,23 @@ AL_NODE\tnvm\t/h/.nvm/versions/node/v25.0.0/bin/node\tv25.0.0\tno
         assert_eq!(d.candidates[0].version, "v22.0.0");
         assert!(d.candidates[0].pm2 && d.candidates[0].shell && !d.candidates[0].plain);
         assert!(d.candidates[1].plain && !d.candidates[1].pm2);
+    }
+
+    #[test]
+    fn a_local_folder_is_checked_like_a_remote_one() {
+        let local = HostEntry { name: LOCAL_HOST.into(), is_local: true, ssh: None, node: None, factories: vec![] };
+        let dir = std::env::temp_dir().join(format!("cr-path-check-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.display().to_string();
+
+        let plain = path_check(&local, &path).unwrap();
+        assert!(plain.exists && plain.main.is_none());
+
+        std::fs::write(dir.join("package.json"), r#"{"main":"src/index.js","dependencies":{"@assemblyline/lib-factory":"1"}}"#).unwrap();
+        assert_eq!(path_check(&local, &path).unwrap().main.as_deref(), Some("src/index.js"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(!path_check(&local, &path).unwrap().exists);
     }
 
     #[test]
