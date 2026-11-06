@@ -257,7 +257,8 @@ Each phase is committed on `alexs-mbp-16`. Git never runs on `alex-linux-pc`.
       covers the commands, not the native window
 - [x] Walk the four routes: factory here, factory elsewhere, no factory, and a host that fails
 - [x] README: first run matches the flow; `CLAUDE.md`: the Add rule
-- [ ] CHANGELOG, release, push, install on both Macs
+- [x] CHANGELOG, version 0.4.0
+- [ ] Tag, release, install on both Macs
 - [ ] Alex tries it in the real app, with the question: where did you stop and wonder? Then delete
       this WIP
 

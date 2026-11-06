@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-06
+
+### Added
+
+- A guided first run, one question per screen: where your factories run, which computer, then which
+  factories. Someone whose factories are all on another computer can now get started; before, the
+  first screen only took local folders.
+- Control Room finds `node` and pm2 on a remote computer, so there's no path to type. It picks the
+  `node` with pm2 beside it and only asks when there's a real choice. `node:` is saved only when
+  plain ssh wouldn't find it.
+- Computers are offered from your ssh config, and running factories are listed and ticked.
+- A pointer to the quickstart for anyone without a factory yet.
+
+### Changed
+
+- Adding a computer or a factory from the sidebar opens the same screens, over the app, so open
+  tabs and terminals stay as they were. The small sidebar forms are gone, including the host's
+  separate display name: a host is named after its ssh name.
+- Remove moved to the factory's right-click menu, and works for remote factories too.
+- A computer without pm2 can be added, with a warning: you can view its factories but not start or
+  stop them.
+- Local folders are checked to be factories before they're added.
+
+### Fixed
+
+- Connection failures say what happened and what to do, with the original error under Details.
+- A Tailscale sign-in while connecting to a new computer now shows its prompt.
+
 ## [0.3.1] - 2026-11-05
 
 ### Changed
