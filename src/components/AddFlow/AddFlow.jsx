@@ -37,6 +37,7 @@ export default function AddFlow({ start, onFinish, onCancel }) {
   /** @param {Step} next */
   const go = (next) => set_history((h) => [...h, next]);
   const back = history.length > 1 ? () => set_history((h) => h.slice(0, -1)) : onCancel;
+  const back_label = history.length > 1 ? "Back" : "Cancel";
 
   return (
     <div style={pageStyle}>
@@ -54,6 +55,7 @@ export default function AddFlow({ start, onFinish, onCancel }) {
         {step.step === "computer" && (
           <StepComputer
             onBack={back}
+            backLabel={back_label}
             onNext={(choice) => {
               if ("saved" in choice) go({ step: "factories", host: choice.saved, computer: choice.saved });
               else go({ step: "connecting", ssh: choice.ssh });
@@ -74,10 +76,18 @@ export default function AddFlow({ start, onFinish, onCancel }) {
             host={step.host}
             computer={step.computer}
             onBack={back}
+            backLabel={back_label}
             onAdded={(names) => go({ step: "done", host: step.host, computer: step.computer, names })}
           />
         )}
-        {step.step === "done" && <StepDone computer={step.computer} names={step.names} onFinish={() => onFinish(step.host)} />}
+        {step.step === "done" && (
+          <StepDone
+            computer={step.computer}
+            names={step.names}
+            finishLabel={onCancel ? "Done" : "Open Control Room"}
+            onFinish={() => onFinish(step.host)}
+          />
+        )}
       </div>
     </div>
   );

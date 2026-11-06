@@ -30,30 +30,12 @@ import { confirm, message } from "@tauri-apps/plugin-dialog";
  */
 
 /**
- * A local factory repo, as the rail and views address it until they move to
- * host + factory names.
- * @typedef {Object} FactoryRepo
- * @property {string} label
- * @property {string} path - absolute
- */
-
-/**
  * Load the central config. `null` before the first factory is added; rejects
  * with the validation message when the file is malformed.
  * @returns {Promise<CentralConfig | null>}
  */
 export async function loadConfig() {
   return invoke("load_config");
-}
-
-/**
- * The `local` host's factories as absolute-path repos.
- * @param {CentralConfig | null} cfg
- * @returns {FactoryRepo[]}
- */
-export function localFactories(cfg) {
-  const local = cfg?.hosts.find((h) => h.is_local);
-  return (local?.factories ?? []).map((w) => ({ label: w.name, path: w.abs_path ?? w.path }));
 }
 
 /**

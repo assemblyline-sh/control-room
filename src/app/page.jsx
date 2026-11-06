@@ -49,8 +49,6 @@ export default function ControlRoomPage() {
     };
   }, [route]);
 
-  const goToOnboarding = useCallback(() => router.push("/onboarding"), [router]);
-
   if (loading) return <div style={centerStyle}>Loading…</div>;
 
   if (error) {
@@ -70,7 +68,7 @@ export default function ControlRoomPage() {
 
   if (!config) return null;
 
-  return <Shell config={config} onAddFactory={goToOnboarding} />;
+  return <Shell config={config} />;
 }
 
 /** @type {React.CSSProperties} */

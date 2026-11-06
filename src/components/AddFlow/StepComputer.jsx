@@ -18,11 +18,12 @@ const TYPE_A_NAME = "\u0000type";
  *
  * @param {{
  *   onBack?: () => void,
+ *   backLabel: string,
  *   onNext: (choice: { ssh: string } | { saved: string }) => void,
  * }} props
  * @returns {React.JSX.Element}
  */
-export default function StepComputer({ onBack, onNext }) {
+export default function StepComputer({ onBack, backLabel, onNext }) {
   const [options, set_options] = useState(/** @type {Option[] | null} */ (null));
   const [choice, set_choice] = useState("");
   const [typed, set_typed] = useState("");
@@ -83,7 +84,7 @@ export default function StepComputer({ onBack, onNext }) {
       <div style={footerStyle}>
         {onBack && (
           <button type="button" style={secondaryStyle} onClick={onBack}>
-            Back
+            {backLabel}
           </button>
         )}
         <button

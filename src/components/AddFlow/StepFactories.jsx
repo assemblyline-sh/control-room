@@ -42,11 +42,12 @@ function sameFolder(configured, folder) {
  *   host: string,
  *   computer: string,
  *   onBack?: () => void,
+ *   backLabel: string,
  *   onAdded: (names: string[]) => void,
  * }} props - `host` as in the config; `computer` is what to call it in a sentence
  * @returns {React.JSX.Element}
  */
-export default function StepFactories({ host, computer, onBack, onAdded }) {
+export default function StepFactories({ host, computer, onBack, backLabel, onAdded }) {
   const is_local = host === "local";
   const [rows, set_rows] = useState(/** @type {Row[] | null} */ (null));
   const [load_error, set_load_error] = useState(/** @type {unknown} */ (null));
@@ -194,7 +195,7 @@ export default function StepFactories({ host, computer, onBack, onAdded }) {
       <div style={footerStyle}>
         {onBack && (
           <button type="button" style={secondaryStyle} disabled={busy} onClick={onBack}>
-            Back
+            {backLabel}
           </button>
         )}
         <button type="button" disabled={!can_finish} style={primaryWhen(can_finish)} onClick={finish}>

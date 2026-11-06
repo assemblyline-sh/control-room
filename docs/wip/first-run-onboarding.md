@@ -1,6 +1,6 @@
 # First-run onboarding
 
-## Status: IN PROGRESS (~65%)
+## Status: IN PROGRESS (~80%)
 
 Take someone who has just installed Control Room to a working factory view without a moment of
 "what is this?" or "what do I do now?". This WIP replaces the local-only welcome page and the two
@@ -241,10 +241,12 @@ Each phase is committed on `alexs-mbp-16`. Git never runs on `alex-linux-pc`.
 - [x] `node:` saved only when needed
 - [x] Finish opens on the added host, including when `local` has no factories
 
-### Phase 5: One way in ❌
-- [ ] Rail `+` opens Which computer; "Add factory" opens the host's Which factories
-- [ ] Delete `AddHostForm.jsx` and `AddRemoteFactoryForm.jsx`; move shared styles if still used
-- [ ] Rail's empty state ("No factories on X.") says what to do and links to the flow
+### Phase 5: One way in ✅
+- [x] Rail `+` opens Which computer; "Add factory" opens the host's Which factories. Both as an
+      overlay, so open tabs and terminals survive an add
+- [x] Delete `AddHostForm.jsx` and `AddRemoteFactoryForm.jsx`
+- [x] Remove moves to the factory's right-click menu: the old page held the only Remove button
+- [x] Rail's empty state says what to do, above "+ Add factory"
 
 ### Phase 6: A newcomer's run ❌
 - [ ] Before and after screenshots of each screen and failure, read back (`scripts/browser-mock.js`)
@@ -274,6 +276,8 @@ Noticed but not seen as a problem yet, so not being built:
   name…" covers both.
 - An nvm upgrade that removes a saved `node:` path fails with the plain `node` message. There is no
   screen yet to re-detect it for an existing host.
+- A host's display name is its ssh name; the old form's name field is gone. Edit the config to
+  change it.
 - An interactive shell that hangs would use the 120-second timeout.
 - The Windows app hasn't been tried with this flow; `~/.ssh/config` there is under the user folder.
 

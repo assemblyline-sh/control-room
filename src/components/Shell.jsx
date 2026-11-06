@@ -23,17 +23,17 @@ import SignInBanner from "@/components/SignInBanner";
  * Top-level shell: rail | (tab strip + tab content). Owns the tabs and
  * tree state providers; everything below pulls via useTabs/useTree hooks.
  *
- * @param {{ config: CentralConfig, onAddFactory: () => void }} props
+ * @param {{ config: CentralConfig }} props
  * @returns {React.JSX.Element}
  */
-export default function Shell({ config, onAddFactory }) {
+export default function Shell({ config }) {
   return (
     <ConfigProvider initial={config}>
       <SshProvider>
         <TabsProvider>
           <TreeProvider>
             <ClearProvider>
-              <ShellBody onAddFactory={onAddFactory} />
+              <ShellBody />
             </ClearProvider>
           </TreeProvider>
         </TabsProvider>
@@ -43,15 +43,14 @@ export default function Shell({ config, onAddFactory }) {
 }
 
 /**
- * @param {{ onAddFactory: () => void }} props
  * @returns {React.JSX.Element}
  */
-function ShellBody({ onAddFactory }) {
+function ShellBody() {
   useShellKeyboard();
   useCountsPoller(useConfig().host.name);
   return (
     <div style={shellStyle}>
-      <Rail onAddFactory={onAddFactory} />
+      <Rail />
       <main style={paneStyle}>
         <SignInBanner />
         <TabStrip />

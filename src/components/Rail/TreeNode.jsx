@@ -16,7 +16,9 @@ import CountsBadge from "@/components/Rail/CountsBadge";
 import ContextMenu from "@/components/ContextMenu";
 import { clearActions } from "@/lib/clear-actions";
 import { canRetry, getDragged, isRetryable, retryWorkpieces, setDragged } from "@/lib/retry";
+import { confirmDialog, removeFactory, showError } from "@/lib/tauri-api";
 import { useClear } from "@/state/clear-context";
+import { useConfig } from "@/state/config-context";
 import { useNodeCounts } from "@/state/counts-store";
 
 /**
@@ -34,6 +36,7 @@ import { useNodeCounts } from "@/state/counts-store";
 export default function TreeNode({ resource, depth }) {
   const { state: tree, dispatch: tree_dispatch } = useTree();
   const { state: tabs, dispatch: tabs_dispatch } = useTabs();
+  const { reload } = useConfig();
 
   const id = resourceIdToString(resource);
   const expanded = tree.expanded.has(id);
@@ -80,6 +83,29 @@ export default function TreeNode({ resource, depth }) {
       resource.type === "station" ? resource.station : resource.type === "bin" ? `${resource.station}/${resource.bin}` : undefined;
     if (menu_items.length > 0) menu_items.push("separator");
     menu_items.push({ label: "New Terminal", onClick: () => tabs_dispatch({ type: "open_tab", resource: newTerminal(host, factory, dir) }) });
+  }
+  if (resource.type === "factory") {
+    const { host, factory } = resource;
+    menu_items.push("separator", {
+      label: "Remove from Control Room…",
+      danger: true,
+      onClick: async () => {
+        const ok = await confirmDialog(
+          `Remove ${factory} from ${host}? The al-control CLI uses the same config, so it disappears there too. The factory itself isn't touched.`,
+          "Remove factory",
+        );
+        if (!ok) return;
+        try {
+          await removeFactory(host, factory);
+          for (const tab of tabs.tabs) {
+            if ("factory" in tab.resource && tab.resource.factory === factory) tabs_dispatch({ type: "close_tab", id: tab.id });
+          }
+          await reload();
+        } catch (err) {
+          showError(err);
+        }
+      },
+    });
   }
 
   // Fetch children when expanded and not loaded — first expand, or after an

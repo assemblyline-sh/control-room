@@ -2,8 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import AddHostForm from "@/components/Rail/AddHostForm";
-import AddRemoteFactoryForm from "@/components/Rail/AddRemoteFactoryForm";
+import AddFlow from "@/components/AddFlow/AddFlow";
 import CountBinsPicker from "@/components/Rail/CountBinsPicker";
 import TreeNode from "@/components/Rail/TreeNode";
 import { openHostWindow, showError } from "@/lib/tauri-api";
@@ -18,14 +17,13 @@ import { useHostTotals } from "@/state/counts-store";
  * TreeNodes that lazy-load their children (lines → stations → bins →
  * workpieces → files) on first expand.
  *
- * @param {{ onAddFactory: () => void }} props
  * @returns {React.JSX.Element}
  */
-export default function Rail({ onAddFactory }) {
+export default function Rail() {
   const { dispatch } = useTabs();
   const { config, host, reload } = useConfig();
   const ssh = useHostSsh(host.name);
-  const [adding, set_adding] = useState(/** @type {'host' | 'factory' | null} */ (null));
+  const [adding, set_adding] = useState(/** @type {import("@/components/AddFlow/AddFlow").Step | null} */ (null));
 
   const totals = useHostTotals(host.name);
   /** @param {import("@/lib/resource-id").ResourceId} resource */
@@ -49,21 +47,10 @@ export default function Rail({ onAddFactory }) {
           ))}
         </select>
         <span style={{ ...dotStyle, background: dotColor(host.is_local, ssh.state) }} title={dotTitle(host, ssh)} />
-        <button type="button" style={iconButtonStyle} title="Add a host" onClick={() => set_adding("host")}>
+        <button type="button" style={iconButtonStyle} title="Add a host" onClick={() => set_adding({ step: "computer" })}>
           +
         </button>
       </div>
-      {adding === "host" && (
-        <AddHostForm
-          onDone={async (name) => {
-            set_adding(null);
-            if (name) {
-              await reload();
-              await openHostWindow(name).catch(showError);
-            }
-          }}
-        />
-      )}
       <div style={headerRowStyle}>
         <span style={headerStyle}>VIEWS</span>
       </div>
@@ -98,7 +85,7 @@ export default function Rail({ onAddFactory }) {
         <CountBinsPicker />
       </div>
       <div style={treeStyle}>
-        {host.factories.length === 0 && <p style={emptyStyle}>No factories on {host.name}.</p>}
+        {host.factories.length === 0 && <p style={emptyStyle}>No factories on {host.is_local ? "this computer" : host.name} yet. Add one to see its lines here.</p>}
         {host.factories.map((w) => (
           <TreeNode
             key={`${host.name}/${w.name}`}
@@ -107,23 +94,25 @@ export default function Rail({ onAddFactory }) {
           />
         ))}
       </div>
-      {adding === "factory" && (
-        <AddRemoteFactoryForm
-          host={host.name}
-          onDone={async (added) => {
+      <button
+        type="button"
+        style={addStyle}
+        onClick={() =>
+          set_adding({ step: "factories", host: host.name, computer: host.is_local ? "this computer" : host.name })
+        }
+      >
+        + Add factory
+      </button>
+      {adding && (
+        <AddFlow
+          start={adding}
+          onCancel={() => set_adding(null)}
+          onFinish={async (added_to) => {
             set_adding(null);
-            if (added) await reload();
+            await reload();
+            if (added_to !== host.name) await openHostWindow(added_to).catch(showError);
           }}
         />
-      )}
-      {adding !== "factory" && (
-        <button
-          type="button"
-          style={addStyle}
-          onClick={() => (host.is_local ? onAddFactory() : set_adding("factory"))}
-        >
-          + Add factory {host.is_local ? "repo" : `on ${host.name}`}
-        </button>
       )}
     </aside>
   );

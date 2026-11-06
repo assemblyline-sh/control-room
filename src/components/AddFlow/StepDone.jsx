@@ -4,10 +4,10 @@
 import { footerStyle, headingStyle, leadStyle, listStyle, noteStyle, primaryStyle, rowStyle } from "@/components/AddFlow/styles";
 
 /**
- * @param {{ computer: string, names: string[], onFinish: () => void }} props
+ * @param {{ computer: string, names: string[], finishLabel: string, onFinish: () => void }} props
  * @returns {React.JSX.Element}
  */
-export default function StepDone({ computer, names, onFinish }) {
+export default function StepDone({ computer, names, finishLabel, onFinish }) {
   return (
     <>
       <h1 style={headingStyle}>You&apos;re set</h1>
@@ -24,7 +24,7 @@ export default function StepDone({ computer, names, onFinish }) {
       </p>
       <div style={footerStyle}>
         <button type="button" style={primaryStyle} onClick={onFinish}>
-          Open Control Room
+          {finishLabel}
         </button>
       </div>
     </>
