@@ -1,6 +1,6 @@
 # Windows: no console flashes, and the parts that assume a Unix machine
 
-## Status: IN PROGRESS (~10%)
+## Status: IN PROGRESS (~35%)
 
 On Windows the app flashes a console window about every 2 seconds, and Open in Terminal, the
 local pm2 controls and connection sharing assume a Unix machine. This WIP hides the console of
@@ -76,15 +76,16 @@ The CI only runs on Linux, so none of the Windows code is compiled until the rel
 
 ## Implementation Phases
 
-### Phase 1: No console windows ❌
+### Phase 1: No console windows 🔄
 
-- [ ] `src-tauri/src/process.rs`: `command(program)`, `CREATE_NO_WINDOW` on Windows; `mod
+- [x] `src-tauri/src/process.rs`: `command(program)`, `CREATE_NO_WINDOW` on Windows; `mod
       process;` in `lib.rs`
-- [ ] `source/probe.rs`: `run_local` and `login_shell_node` through `process::command`
-- [ ] `source/ssh.rs`: `run` through `process::command`
-- [ ] `pm2.rs`: `local_pm2` and the remote log tail through `process::command`
-- [ ] `.github/workflows/ci.yml`: `windows-check` job, `cargo check` on `windows-latest`
-- [ ] `cargo test` (Linux CI) and the Windows check pass
+- [x] `source/probe.rs`: `run_local` and `login_shell_node` through `process::command`
+- [x] `source/ssh.rs`: `run` through `process::command`
+- [x] `pm2.rs`: `local_pm2` and the remote log tail through `process::command`
+- [x] `.github/workflows/ci.yml`: `windows-check` job, `cargo check` on `windows-latest`
+- [x] `cargo test` passes on the Mac (45 passed, 12 ignored, no warnings)
+- [ ] The Windows check passes in CI (runs on the push in Phase 4)
 
 ### Phase 2: Terminal, pm2, ssh and node on Windows ❌
 

@@ -7,6 +7,7 @@ mod host_commands;
 mod monitor;
 mod monitor_commands;
 mod pm2;
+mod process;
 mod requeue;
 mod resolve;
 mod source;

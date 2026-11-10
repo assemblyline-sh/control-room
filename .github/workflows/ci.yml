@@ -41,3 +41,19 @@ jobs:
       # The tests run the probe with this runner's node.
       - run: cargo test
         working-directory: src-tauri
+
+  # The Windows-only code is otherwise first compiled by the release build.
+  # Check, not test: the tests use /bin/sh and Unix permissions.
+  windows-check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: cargo check --locked
+        working-directory: src-tauri

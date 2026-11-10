@@ -17,7 +17,7 @@ use serde::Serialize;
 use super::ssh;
 use crate::central_config::HostEntry;
 use crate::commands::CommandError;
-use crate::events;
+use crate::{events, process};
 
 /// al-control's src/probe.js, byte for byte, at the version pinned in
 /// package.json (`npm run check:probe`). Never edit it here.
@@ -70,7 +70,7 @@ fn script(queries: &[serde_json::Value]) -> String {
 
 fn run_local(host: &HostEntry, queries: &[serde_json::Value]) -> Result<Vec<serde_json::Value>, CommandError> {
     let node = local_node(host);
-    let mut child = with_node_path(Command::new(&node), &node)
+    let mut child = with_node_path(process::command(&node), &node)
         .args(["--input-type=module", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -146,7 +146,7 @@ pub fn local_node(host: &HostEntry) -> String {
 
 fn login_shell_node() -> Option<String> {
     let shell = std::env::var("SHELL").ok().filter(|s| !s.is_empty())?;
-    let out = Command::new(shell).args(["-ilc", "command -v node"]).stdin(Stdio::null()).output().ok()?;
+    let out = process::command(shell).args(["-ilc", "command -v node"]).stdin(Stdio::null()).output().ok()?;
     // An interactive shell may print a banner first; the path is the last line.
     String::from_utf8_lossy(&out.stdout).lines().rev().map(str::trim).find(|l| l.starts_with('/')).map(String::from)
 }

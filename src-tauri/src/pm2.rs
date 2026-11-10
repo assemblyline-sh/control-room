@@ -22,6 +22,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::central_config::HostEntry;
 use crate::commands::CommandError;
+use crate::process;
 use crate::resolve::resolve;
 use crate::source::{probe, ssh};
 
@@ -125,7 +126,7 @@ fn local_pm2(host: &HostEntry, args: &[&str], cwd: Option<&str>) -> Command {
     let program = if beside.is_file() { ssh::shell_quote(&beside.display().to_string()) } else { "pm2".to_string() };
     let local = HostEntry { node: Some(node), ..host.clone() };
     let shell = std::env::var("SHELL").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "/bin/sh".into());
-    let mut cmd = Command::new(shell);
+    let mut cmd = process::command(shell);
     cmd.args(["-lc", &ssh::pm2_inner(&local, &program, args, cwd)]);
     cmd
 }
@@ -292,7 +293,7 @@ pub async fn start_log_tail(
     let mut cmd = if t.host.is_local {
         local_pm2(&t.host, &args, None)
     } else {
-        let mut c = Command::new("ssh");
+        let mut c = process::command("ssh");
         c.args(ssh::ssh_args(&t.host, false)).arg(ssh::pm2_command(&t.host, "pm2", &args, None));
         c
     };

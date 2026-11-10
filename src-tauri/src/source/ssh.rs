@@ -16,7 +16,7 @@
 // the UI turns those into a sign-in banner and a connection dot.
 
 use std::io::{BufRead, Read, Write};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -24,7 +24,7 @@ use sha2::{Digest, Sha256};
 
 use crate::central_config::{family_root, HostEntry};
 use crate::commands::CommandError;
-use crate::events;
+use crate::{events, process};
 
 /// Covers a Tailscale sign-in in the browser; then the call fails.
 const CALL_TIMEOUT: Duration = Duration::from_secs(120);
@@ -96,7 +96,7 @@ pub fn pm2_inner(host: &HostEntry, pm2: &str, args: &[&str], cwd: Option<&str>) 
 /// Run a remote command with `input` on stdin, streaming stderr as events,
 /// with a timeout. Returns (exit code, stdout, stderr lines).
 pub fn run(host: &HostEntry, remote_cmd: &str, input: &str) -> Result<(i32, Vec<u8>, Vec<String>), CommandError> {
-    let mut child = Command::new("ssh")
+    let mut child = process::command("ssh")
         .args(ssh_args(host, false))
         .arg(remote_cmd)
         .stdin(Stdio::piped())
@@ -161,6 +161,7 @@ pub fn last_lines(err: &[String]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     fn host(node: Option<&str>) -> HostEntry {
         HostEntry { name: "prod".into(), is_local: false, ssh: Some("prod-box".into()), node: node.map(String::from), factories: vec![] }
