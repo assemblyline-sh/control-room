@@ -1,6 +1,6 @@
 [package]
 name = "control-room"
-version = "0.4.1"
+version = "0.4.2"
 description = "Desktop window onto Assembly Line factory floors."
 authors = ["Assembly Line"]
 edition = "2021"

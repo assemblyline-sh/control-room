@@ -1,6 +1,6 @@
 # Windows: no console flashes, and the parts that assume a Unix machine
 
-## Status: IN PROGRESS (~70%)
+## Status: IN PROGRESS (~80%)
 
 On Windows the app flashes a console window about every 2 seconds, and Open in Terminal, the
 local pm2 controls and connection sharing assume a Unix machine. This WIP hides the console of
@@ -76,7 +76,7 @@ The CI only runs on Linux, so none of the Windows code is compiled until the rel
 
 ## Implementation Phases
 
-### Phase 1: No console windows 🔄
+### Phase 1: No console windows ✅
 
 - [x] `src-tauri/src/process.rs`: `command(program)`, `CREATE_NO_WINDOW` on Windows; `mod
       process;` in `lib.rs`
@@ -85,9 +85,9 @@ The CI only runs on Linux, so none of the Windows code is compiled until the rel
 - [x] `pm2.rs`: `local_pm2` and the remote log tail through `process::command`
 - [x] `.github/workflows/ci.yml`: `windows-check` job, `cargo check` on `windows-latest`
 - [x] `cargo test` passes on the Mac (45 passed, 12 ignored, no warnings)
-- [ ] The Windows check passes in CI (runs on the push in Phase 4)
+- [x] The Windows check passes in CI (run 42890553194, no warnings)
 
-### Phase 2: Terminal, pm2, ssh and node on Windows 🔄
+### Phase 2: Terminal, pm2, ssh and node on Windows ✅
 
 - [x] `host_commands.rs`: `spawn_terminal_at` / `spawn_terminal_running` for Windows with
       `CREATE_NEW_CONSOLE`; the `x-terminal-emulator` pair becomes Unix-only (not macOS)
@@ -97,8 +97,9 @@ The CI only runs on Linux, so none of the Windows code is compiled until the rel
 - [x] `source/ssh.rs`: `ssh_args` shares connections only on Unix; comment says why
 - [x] `source/probe.rs`: `login_shell_node` returns `None` on Windows
 - [x] `cargo test` passes on the Mac (45 passed, no warnings)
-- [ ] The Windows check passes in CI. A cross `cargo check --target x86_64-pc-windows-msvc` on
-      the Mac stops in tauri-build (`NotAttempted("llvm-rc")`: no Windows resource compiler)
+- [x] The Windows check passes in CI (run 42890553194). A cross `cargo check --target
+      x86_64-pc-windows-msvc` on the Mac stops in tauri-build (`NotAttempted("llvm-rc")`: no
+      Windows resource compiler), so CI is the check
 
 ### Phase 3: Docs ✅
 
@@ -107,9 +108,9 @@ The CI only runs on Linux, so none of the Windows code is compiled until the rel
 - [x] `CLAUDE.md`: start processes through `process::command`; `powershell.exe` among the
       hardcoded binaries
 
-### Phase 4: Release 0.4.2 and install on s0179 ❌
+### Phase 4: Release 0.4.2 and install on s0179 🔄
 
-- [ ] Bump `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`,
+- [x] Bump `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`,
       `src-tauri/tauri.conf.json`; date the CHANGELOG section; `chore: release 0.4.2`
 - [ ] Push `main` and tag `v0.4.2`; the Release workflow builds the draft
 - [ ] Publish the draft release
