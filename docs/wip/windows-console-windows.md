@@ -1,6 +1,6 @@
 # Windows: no console flashes, and the parts that assume a Unix machine
 
-## Status: IN PROGRESS (~60%)
+## Status: IN PROGRESS (~70%)
 
 On Windows the app flashes a console window about every 2 seconds, and Open in Terminal, the
 local pm2 controls and connection sharing assume a Unix machine. This WIP hides the console of
@@ -100,11 +100,12 @@ The CI only runs on Linux, so none of the Windows code is compiled until the rel
 - [ ] The Windows check passes in CI. A cross `cargo check --target x86_64-pc-windows-msvc` on
       the Mac stops in tauri-build (`NotAttempted("llvm-rc")`: no Windows resource compiler)
 
-### Phase 3: Docs ❌
+### Phase 3: Docs ✅
 
-- [ ] `CHANGELOG.md`: `[Unreleased]`, `### Fixed`
-- [ ] `README.md`: what works on Windows and what doesn't yet
-- [ ] `CLAUDE.md`: start processes through `process::command`
+- [x] `CHANGELOG.md`: `[Unreleased]`, `### Fixed`
+- [x] `README.md`: SmartScreen, what works on Windows and what doesn't yet
+- [x] `CLAUDE.md`: start processes through `process::command`; `powershell.exe` among the
+      hardcoded binaries
 
 ### Phase 4: Release 0.4.2 and install on s0179 ❌
 

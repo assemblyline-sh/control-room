@@ -72,6 +72,19 @@ xattr -dr com.apple.quarantine "/Applications/Control Room.app"
 Or open System Settings → Privacy & Security and click **Open Anyway**. The install script
 above doesn't hit this: `curl` downloads aren't quarantined.
 
+### Windows: "Windows protected your PC"
+
+The installer isn't signed yet, so SmartScreen stops it. Click **More info**, then **Run anyway**.
+
+What works on Windows so far: lines, stations, bins, workpieces, failures, clear and retry, for
+factories on this computer and on Mac or Linux hosts over ssh, plus Open in Terminal. Not yet:
+
+- **pm2 status, start, stop and logs for a factory on this computer,** and finding its running
+  factories when you add one. al-control's probe finds processes on macOS and Linux only.
+- **A Windows computer as a remote host.** The remote commands assume a Unix shell.
+- **Shared ssh connections.** Windows' OpenSSH can't share them, so every remote call signs in
+  afresh.
+
 ## First run
 
 With no factories yet, the app asks where they run and takes you through it, one question at a

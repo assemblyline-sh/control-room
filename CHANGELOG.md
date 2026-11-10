@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows: no more console window flashing every couple of seconds. Every `node`, `ssh` and pm2
+  the app starts now runs without a window.
+- Windows: Open in Terminal opens PowerShell at the folder, or an ssh session for a remote host,
+  instead of failing on `x-terminal-emulator`.
+- Windows: local pm2 runs without a Unix shell.
+- Windows: remote hosts connect. ssh connection sharing, which Windows' OpenSSH doesn't support,
+  is off there.
+
 ## [0.4.1] - 2026-11-06
 
 ### Added
