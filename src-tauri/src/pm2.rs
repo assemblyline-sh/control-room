@@ -120,6 +120,7 @@ impl Target {
 /// from the Finder has a bare PATH, and a factory started from it would get
 /// that PATH. pm2 is the one next to the node the probe uses, else whatever
 /// the login shell finds.
+#[cfg(not(windows))]
 fn local_pm2(host: &HostEntry, args: &[&str], cwd: Option<&str>) -> Command {
     let node = probe::local_node(host);
     let beside = std::path::Path::new(&node).with_file_name("pm2");
@@ -128,6 +129,33 @@ fn local_pm2(host: &HostEntry, args: &[&str], cwd: Option<&str>) -> Command {
     let shell = std::env::var("SHELL").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "/bin/sh".into());
     let mut cmd = process::command(shell);
     cmd.args(["-lc", &ssh::pm2_inner(&local, &program, args, cwd)]);
+    cmd
+}
+
+/// `pm2 <args>` on Windows: no login shell, and an app started from the Start
+/// menu already has the user's PATH. pm2's own script, beside the `pm2.cmd`
+/// npm put on PATH, runs with the probe's node, so killing a log tail kills
+/// pm2 itself (through `pm2.cmd` it would kill cmd.exe and leave pm2 running).
+#[cfg(windows)]
+fn local_pm2(host: &HostEntry, args: &[&str], cwd: Option<&str>) -> Command {
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let script = std::env::split_paths(&path)
+        .filter(|dir| dir.join("pm2.cmd").is_file())
+        .map(|dir| dir.join("node_modules").join("pm2").join("bin").join("pm2"))
+        .find(|s| s.is_file());
+    let mut cmd = match script {
+        Some(script) => {
+            let node = probe::local_node(host);
+            let mut c = probe::with_node_path(process::command(&node), &node);
+            c.arg(script);
+            c
+        }
+        None => process::command("pm2.cmd"),
+    };
+    cmd.args(args);
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
     cmd
 }
 

@@ -39,12 +39,14 @@ pub fn shell_quote(s: &str) -> String {
 /// and ssh binds `<path>.XXXXXXXXXXXXXXXX`, 17 more, first). `%C` is 40 hex
 /// chars and can't be shortened, so the name is our own hash of the alias, the
 /// same one the CLI builds — skip multiplexing if even that's too long.
+/// Windows OpenSSH can't share connections at all (`getsockname failed: Not
+/// a socket`), so there every call opens its own.
 pub fn ssh_args(host: &HostEntry, tty: bool) -> Vec<String> {
     let alias = host.ssh.clone().unwrap_or_default();
     let socket_dir = family_root().join("al-control");
     let socket_name: String = Sha256::digest(alias.as_bytes()).iter().take(6).map(|b| format!("{:02x}", b)).collect();
     let control_path = socket_dir.join(format!("ssh-{}", socket_name)).display().to_string();
-    let multiplex = control_path.len() + 17 < 104;
+    let multiplex = cfg!(unix) && control_path.len() + 17 < 104;
     if multiplex {
         let _ = std::fs::create_dir_all(&socket_dir);
     }

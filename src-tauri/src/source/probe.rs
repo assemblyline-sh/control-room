@@ -135,7 +135,8 @@ fn envelopes(host: &str, out: &[u8], expected: usize, stderr_tail: &str) -> Resu
 
 /// `node` for this machine: the local host's `node:` when set, else the one
 /// the user's login shell finds (an app opened from the Finder gets a bare
-/// PATH, without nvm's or Homebrew's bin), else whatever `node` is on PATH.
+/// PATH, without nvm's or Homebrew's bin; not on Windows), else whatever `node`
+/// is on PATH.
 pub fn local_node(host: &HostEntry) -> String {
     if let Some(node) = host.node.as_deref().filter(|n| !n.is_empty()) {
         return crate::central_config::expand_tilde(node).display().to_string();
@@ -145,6 +146,11 @@ pub fn local_node(host: &HostEntry) -> String {
 }
 
 fn login_shell_node() -> Option<String> {
+    // Windows has no login shell, and an app started from the Start menu
+    // already has the user's PATH.
+    if cfg!(windows) {
+        return None;
+    }
     let shell = std::env::var("SHELL").ok().filter(|s| !s.is_empty())?;
     let out = process::command(shell).args(["-ilc", "command -v node"]).stdin(Stdio::null()).output().ok()?;
     // An interactive shell may print a banner first; the path is the last line.

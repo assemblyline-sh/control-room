@@ -1,6 +1,6 @@
 # Windows: no console flashes, and the parts that assume a Unix machine
 
-## Status: IN PROGRESS (~35%)
+## Status: IN PROGRESS (~60%)
 
 On Windows the app flashes a console window about every 2 seconds, and Open in Terminal, the
 local pm2 controls and connection sharing assume a Unix machine. This WIP hides the console of
@@ -87,14 +87,18 @@ The CI only runs on Linux, so none of the Windows code is compiled until the rel
 - [x] `cargo test` passes on the Mac (45 passed, 12 ignored, no warnings)
 - [ ] The Windows check passes in CI (runs on the push in Phase 4)
 
-### Phase 2: Terminal, pm2, ssh and node on Windows ❌
+### Phase 2: Terminal, pm2, ssh and node on Windows 🔄
 
-- [ ] `host_commands.rs`: `spawn_terminal_at` / `spawn_terminal_running` for Windows with
+- [x] `host_commands.rs`: `spawn_terminal_at` / `spawn_terminal_running` for Windows with
       `CREATE_NEW_CONSOLE`; the `x-terminal-emulator` pair becomes Unix-only (not macOS)
-- [ ] `pm2.rs`: `local_pm2` for Windows: `node <pm2 script>`, `current_dir`, fallback `pm2.cmd`
-- [ ] `source/ssh.rs`: `ssh_args` shares connections only on Unix; comment says why
-- [ ] `source/probe.rs`: `login_shell_node` returns `None` on Windows
-- [ ] CI passes on both
+- [x] `pm2.rs`: `local_pm2` for Windows: `node <pm2 script>`, `current_dir`, fallback `pm2.cmd`.
+      Layout checked on `s0179`: `%APPDATA%\npm\pm2.cmd` and
+      `%APPDATA%\npm\node_modules\pm2\bin\pm2`, which `node` runs (`jlist`)
+- [x] `source/ssh.rs`: `ssh_args` shares connections only on Unix; comment says why
+- [x] `source/probe.rs`: `login_shell_node` returns `None` on Windows
+- [x] `cargo test` passes on the Mac (45 passed, no warnings)
+- [ ] The Windows check passes in CI. A cross `cargo check --target x86_64-pc-windows-msvc` on
+      the Mac stops in tauri-build (`NotAttempted("llvm-rc")`: no Windows resource compiler)
 
 ### Phase 3: Docs ❌
 

@@ -321,7 +321,7 @@ fn spawn_terminal_at(dir: &str) -> Result<(), CommandError> {
         .map_err(|e| CommandError::Io(e.to_string()))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(unix, not(target_os = "macos")))]
 fn spawn_terminal_at(dir: &str) -> Result<(), CommandError> {
     std::process::Command::new("x-terminal-emulator")
         .current_dir(dir)
@@ -329,6 +329,23 @@ fn spawn_terminal_at(dir: &str) -> Result<(), CommandError> {
         .map(|_| ())
         .map_err(|e| CommandError::Io(e.to_string()))
 }
+
+/// PowerShell in a console of its own, which Windows 11 opens in the default
+/// terminal app.
+#[cfg(windows)]
+fn spawn_terminal_at(dir: &str) -> Result<(), CommandError> {
+    use std::os::windows::process::CommandExt;
+    std::process::Command::new("powershell.exe")
+        .arg("-NoExit")
+        .current_dir(dir)
+        .creation_flags(CREATE_NEW_CONSOLE)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| CommandError::Io(e.to_string()))
+}
+
+#[cfg(windows)]
+const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
 
 /// macOS Terminal can't be handed an argv, so write it to a throwaway
 /// `.command` script (each arg shell-quoted) and open that.
@@ -348,11 +365,23 @@ fn spawn_terminal_running(argv: &[String]) -> Result<(), CommandError> {
         .map_err(|e| CommandError::Io(e.to_string()))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(unix, not(target_os = "macos")))]
 fn spawn_terminal_running(argv: &[String]) -> Result<(), CommandError> {
     std::process::Command::new("x-terminal-emulator")
         .arg("-e")
         .args(argv)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| CommandError::Io(e.to_string()))
+}
+
+/// The argv itself in a console of its own: no shell, so nothing to quote.
+#[cfg(windows)]
+fn spawn_terminal_running(argv: &[String]) -> Result<(), CommandError> {
+    use std::os::windows::process::CommandExt;
+    std::process::Command::new(&argv[0])
+        .args(&argv[1..])
+        .creation_flags(CREATE_NEW_CONSOLE)
         .spawn()
         .map(|_| ())
         .map_err(|e| CommandError::Io(e.to_string()))
