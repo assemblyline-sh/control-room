@@ -1,6 +1,6 @@
 # Add flow reuses a saved host
 
-## Status: IN PROGRESS (~60%)
+## Status: IN PROGRESS (~75%)
 
 Adding a computer that's already in the config fails with "A host named '…' already exists" when
 it's typed as `user@name`, or when the host already has factories. This WIP makes the add flow
@@ -85,7 +85,7 @@ Why:
 
 ### Phase 3: Release 0.4.3 and install on s0179 ❌
 
-- [ ] Bump the five version files and date the CHANGELOG; `chore: release 0.4.3`
+- [x] Bump the five version files and date the CHANGELOG; `chore: release 0.4.3`
 - [ ] Push `main` (CI green), tag `v0.4.3`; the Release workflow builds the draft
 - [ ] Publish the draft
 - [ ] Install the `.exe` on `s0179`: the hash matches the release digest

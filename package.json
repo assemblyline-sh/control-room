@@ -1,6 +1,6 @@
 {
   "name": "control-room",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "description": "Desktop window onto Assembly Line factory floors, on this machine and over SSH. Tauri and Next.js; reads al-control's config and runs its probe.",
   "scripts": {
