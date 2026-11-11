@@ -56,6 +56,7 @@ export default function StepFactories({ host, computer, onBack, backLabel, onAdd
   const [note, set_note] = useState(/** @type {string | null} */ (null));
   const [busy, set_busy] = useState(false);
   const [add_error, set_add_error] = useState(/** @type {unknown} */ (null));
+  const [has_factories, set_has_factories] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +65,7 @@ export default function StepFactories({ host, computer, onBack, backLabel, onAdd
         const [check, cfg] = await Promise.all([runningFactories(host), loadConfig()]);
         if (cancelled) return;
         const configured = cfg?.hosts.find((h) => h.name === host)?.factories ?? [];
+        set_has_factories(configured.length > 0);
         set_rows(
           check.running.map((f) => {
             const already = configured.some((c) => sameFolder(c.abs_path ?? c.path, f.path));
@@ -130,7 +132,9 @@ export default function StepFactories({ host, computer, onBack, backLabel, onAdd
     }
   }
 
-  const can_finish = !busy && (rows ?? []).some((r) => r.ticked && !r.already);
+  const adds_any = (rows ?? []).some((r) => r.ticked && !r.already);
+  // A host that already has factories can be opened with nothing new added.
+  const can_finish = !busy && (adds_any || has_factories);
   const has_rows = !!rows && rows.length > 0;
 
   return (
@@ -199,7 +203,7 @@ export default function StepFactories({ host, computer, onBack, backLabel, onAdd
           </button>
         )}
         <button type="button" disabled={!can_finish} style={primaryWhen(can_finish)} onClick={finish}>
-          Continue
+          {adds_any || !has_factories ? "Continue" : `Open ${computer}`}
         </button>
       </div>
     </>

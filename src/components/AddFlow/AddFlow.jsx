@@ -77,7 +77,9 @@ export default function AddFlow({ start, onFinish, onCancel }) {
             computer={step.computer}
             onBack={back}
             backLabel={back_label}
-            onAdded={(names) => go({ step: "done", host: step.host, computer: step.computer, names })}
+            onAdded={(names) =>
+              names.length ? go({ step: "done", host: step.host, computer: step.computer, names }) : onFinish(step.host)
+            }
           />
         )}
         {step.step === "done" && (

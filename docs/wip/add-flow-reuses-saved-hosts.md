@@ -1,6 +1,6 @@
 # Add flow reuses a saved host
 
-## Status: IN PROGRESS (~10%)
+## Status: IN PROGRESS (~50%)
 
 Adding a computer that's already in the config fails with "A host named '…' already exists" when
 it's typed as `user@name`, or when the host already has factories. This WIP makes the add flow
@@ -64,16 +64,19 @@ Why:
 
 ## Implementation Phases
 
-### Phase 1: Reuse a saved host ❌
+### Phase 1: Reuse a saved host ✅
 
-- [ ] `src/lib/saved-host.js`: `savedHostFor`
-- [ ] `tests/saved-host.test.mjs`: exact ssh, exact name, `user@` typed, `user@` saved, local
+- [x] `src/lib/saved-host.js`: `savedHostFor`, and `computerOf` (the `user@` drop
+      `StepConnecting` already did, now shared)
+- [x] `tests/saved-host.test.mjs`: exact ssh, exact name, `user@` typed, `user@` saved, local
       ignored, no match
-- [ ] `StepComputer.jsx`: offer every saved remote host; typed or alias → saved host
-- [ ] `StepConnecting.jsx`: existing host through `savedHostFor`
-- [ ] `StepFactories.jsx`: "Open <computer>" with nothing new when the host has factories
-- [ ] `AddFlow.jsx`: nothing added → `onFinish(host)` directly
-- [ ] `npm test`, `npm run typecheck`, `npm run lint` pass
+- [x] `StepComputer.jsx`: offer every saved remote host; typed or alias → saved host, with a note
+      and "Next" instead of "Connect"
+- [x] `StepConnecting.jsx`: existing host through `savedHostFor`
+- [x] `StepFactories.jsx`: "Open <computer>" with nothing new when the host has factories
+- [x] `AddFlow.jsx`: nothing added → `onFinish(host)` directly
+- [x] `npm test` (15 pass), `npm run typecheck` pass; `npm run lint` 0 errors, its 9 warnings are
+      all in files this doesn't touch
 
 ### Phase 2: Docs ❌
 

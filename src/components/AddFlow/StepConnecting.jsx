@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { addHost, detectNode, loadConfig, testHost } from "@/lib/tauri-api";
+import { computerOf, savedHostFor } from "@/lib/saved-host";
 import { SignInPrompt } from "@/components/SignInBanner";
 import ErrorNote from "@/components/AddFlow/ErrorNote";
 import { footerStyle, headingStyle, inputStyle, noteStyle, primaryWhen, secondaryStyle } from "@/components/AddFlow/styles";
@@ -40,7 +41,7 @@ function nodeToSave(candidate) {
  * @returns {React.JSX.Element}
  */
 export default function StepConnecting({ ssh, onBack, onConnected }) {
-  const computer = ssh.replace(/^.*@/, "");
+  const computer = computerOf(ssh);
   const [detection, set_detection] = useState(/** @type {NodeDetection | null} */ (null));
   const [reach_error, set_reach_error] = useState(/** @type {unknown} */ (null));
   const [chosen, set_chosen] = useState("");
@@ -119,9 +120,9 @@ export default function StepConnecting({ ssh, onBack, onConnected }) {
     set_saving(true);
     try {
       const cfg = await loadConfig();
-      const existing = cfg?.hosts.find((h) => h.ssh === ssh);
+      const existing = savedHostFor(cfg?.hosts ?? [], ssh);
       if (!existing) await addHost(computer, ssh, node ?? "");
-      onConnected(existing?.name ?? computer);
+      onConnected(existing ?? computer);
     } catch (err) {
       set_save_error(err);
       set_saving(false);

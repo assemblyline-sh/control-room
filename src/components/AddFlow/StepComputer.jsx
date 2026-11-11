@@ -3,18 +3,20 @@
 
 import { useEffect, useState } from "react";
 import { listSshHosts, loadConfig } from "@/lib/tauri-api";
+import { savedHostFor } from "@/lib/saved-host";
 import { footerStyle, headingStyle, inputStyle, leadStyle, noteStyle, primaryWhen, secondaryStyle } from "@/components/AddFlow/styles";
 
 const TYPE_A_NAME = "\u0000type";
 
 /**
  * @typedef {{ value: string, label: string, saved: boolean }} Option
+ * @typedef {import("@/lib/tauri-api").ConfigHost} ConfigHost
  */
 
 /**
- * Which computer. Offers what's in the ssh config, plus hosts saved earlier
- * that have no factories yet (someone who left part-way through). Hosts that
- * already have factories aren't offered: their rail has "Add factory".
+ * Which computer. Offers the hosts saved earlier, then what's in the ssh
+ * config. A saved host, however it's typed (`user@` or not), goes to its
+ * factories instead of being added again.
  *
  * @param {{
  *   onBack?: () => void,
@@ -25,6 +27,7 @@ const TYPE_A_NAME = "\u0000type";
  */
 export default function StepComputer({ onBack, backLabel, onNext }) {
   const [options, set_options] = useState(/** @type {Option[] | null} */ (null));
+  const [hosts, set_hosts] = useState(/** @type {ConfigHost[]} */ ([]));
   const [choice, set_choice] = useState("");
   const [typed, set_typed] = useState("");
 
@@ -34,8 +37,9 @@ export default function StepComputer({ onBack, backLabel, onNext }) {
       const [aliases, cfg] = await Promise.all([listSshHosts(), loadConfig().catch(() => null)]);
       if (cancelled) return;
       const remote = (cfg?.hosts ?? []).filter((h) => !h.is_local);
-      const saved = remote.filter((h) => h.factories.length === 0).map((h) => ({ value: h.name, label: `${h.name} (already added)`, saved: true }));
-      const fresh = aliases.filter((a) => !remote.some((h) => h.ssh === a)).map((a) => ({ value: a, label: a, saved: false }));
+      set_hosts(remote);
+      const saved = remote.map((h) => ({ value: h.name, label: `${h.name} (already added)`, saved: true }));
+      const fresh = aliases.filter((a) => !savedHostFor(remote, a)).map((a) => ({ value: a, label: a, saved: false }));
       const list = [...saved, ...fresh];
       set_options(list);
       if (list.length === 0) set_choice(TYPE_A_NAME);
@@ -48,7 +52,7 @@ export default function StepComputer({ onBack, backLabel, onNext }) {
 
   const typing = choice === TYPE_A_NAME;
   const name = typing ? typed.trim() : choice;
-  const saved = !typing && !!options?.find((o) => o.value === choice)?.saved;
+  const saved = savedHostFor(hosts, name);
 
   return (
     <>
@@ -78,8 +82,16 @@ export default function StepComputer({ onBack, backLabel, onNext }) {
         />
       )}
       <p style={noteStyle}>
-        Control Room connects the way <code>ssh {name || "my-server"}</code> does in a terminal. That needs to work without
-        typing a password.
+        {saved ? (
+          <>
+            <code>{saved}</code> is already added. Next you can add more of its factories, or open it.
+          </>
+        ) : (
+          <>
+            Control Room connects the way <code>ssh {name || "my-server"}</code> does in a terminal. That needs to work
+            without typing a password.
+          </>
+        )}
       </p>
       <div style={footerStyle}>
         {onBack && (
@@ -91,9 +103,9 @@ export default function StepComputer({ onBack, backLabel, onNext }) {
           type="button"
           disabled={!name}
           style={primaryWhen(!!name)}
-          onClick={() => onNext(saved ? { saved: name } : { ssh: name })}
+          onClick={() => onNext(saved ? { saved } : { ssh: name })}
         >
-          Connect
+          {saved ? "Next" : "Connect"}
         </button>
       </div>
     </>
