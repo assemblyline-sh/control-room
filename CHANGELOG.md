@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Adding a computer that's already added no longer fails with "A host named '…' already exists".
+  Every saved computer is offered again, and typing it as `user@name` or `name` finds the saved
+  one. With nothing new to add, the last screen opens it.
+
 ## [0.4.2] - 2026-11-11
 
 ### Fixed

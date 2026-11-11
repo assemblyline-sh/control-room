@@ -96,8 +96,9 @@ time:
   in a terminal without a password.
 - **No factory yet:** it points you to the [quickstart](https://assemblyline.sh/docs/quickstart).
 
-The same screens open later from **+** (add a computer) and **+ Add factory** in the sidebar.
-Right-click a factory to remove it from Control Room.
+The same screens open later from **+** (add a computer) and **+ Add factory** in the sidebar. A
+computer you've already added is offered again, typed with or without `user@`, to add more of its
+factories or just open it. Right-click a factory to remove it from Control Room.
 
 ## Config
 

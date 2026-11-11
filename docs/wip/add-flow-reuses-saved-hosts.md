@@ -1,6 +1,6 @@
 # Add flow reuses a saved host
 
-## Status: IN PROGRESS (~50%)
+## Status: IN PROGRESS (~60%)
 
 Adding a computer that's already in the config fails with "A host named '…' already exists" when
 it's typed as `user@name`, or when the host already has factories. This WIP makes the add flow
@@ -78,10 +78,10 @@ Why:
 - [x] `npm test` (15 pass), `npm run typecheck` pass; `npm run lint` 0 errors, its 9 warnings are
       all in files this doesn't touch
 
-### Phase 2: Docs ❌
+### Phase 2: Docs ✅
 
-- [ ] `CHANGELOG.md`: `[Unreleased]`, `### Fixed`
-- [ ] `README.md`: First run says a saved computer can be picked again
+- [x] `CHANGELOG.md`: `[Unreleased]`, `### Fixed`
+- [x] `README.md`: First run says a saved computer can be picked again
 
 ### Phase 3: Release 0.4.3 and install on s0179 ❌
 
