@@ -1,6 +1,7 @@
 # First-run onboarding
 
 ## Status: IN PROGRESS (~95%)
+## Priority: P2: the first thing every new user sees
 
 Take someone who has just installed Control Room to a working factory view without a moment of
 "what is this?" or "what do I do now?". This WIP replaces the local-only welcome page and the two

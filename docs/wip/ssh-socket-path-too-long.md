@@ -1,6 +1,7 @@
 # SSH socket path too long on macOS
 
 ## Status: IN PROGRESS (~70%)
+## Priority: P2: connecting fails on Macs with a long home path, with no workaround
 
 Connecting to a remote host fails on a Mac with a long home path, because the SSH socket path
 goes over the macOS limit. This WIP replaces ssh's 40-character `%C` hash in the socket name

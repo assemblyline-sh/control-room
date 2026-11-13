@@ -1,6 +1,7 @@
 # Config root moves from ~/.assemblyline to ~/.al
 
 ## Status: IN PROGRESS (~85%)
+## Priority: P3: a path rename; the old path works
 
 Every al-<tool> keeps its config under `~/.al/<tool>/` instead of `~/.assemblyline/<tool>/`, in
 al-control, al-orc and control-room. The first run of an updated tool moves the existing folder,
