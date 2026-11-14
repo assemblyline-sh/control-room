@@ -2,6 +2,7 @@
 
 ## Status: IN PROGRESS (~95%)
 ## Priority: P3: the fork is usable; loose ends
+## Bet: assembly-line-public
 
 control-room is the desktop window onto Assembly Line factory floors, forked from fob-watch
 0.6.0 with a fresh history. It reads al-control's config, runs al-control's probe for every

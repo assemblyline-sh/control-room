@@ -2,6 +2,7 @@
 
 ## Status: IN PROGRESS (~75%)
 ## Priority: P2: adding a saved computer errors; the workaround is deleting the host first
+## Bet: assembly-line-public
 
 Adding a computer that's already in the config fails with "A host named '…' already exists" when
 it's typed as `user@name`, or when the host already has factories. This WIP makes the add flow

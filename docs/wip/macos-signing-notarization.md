@@ -2,6 +2,7 @@
 
 ## Status: NOT STARTED — waiting on Apple Developer Program enrolment
 ## Priority: P2: Gatekeeper blocks every downloaded copy (workaround: right-click, Open); waiting on Apple enrolment
+## Bet: assembly-line-public
 
 Sign the macOS release builds with a Developer ID certificate and notarize them with Apple in CI, so a downloaded control-room opens without Gatekeeper blocking it.
 
