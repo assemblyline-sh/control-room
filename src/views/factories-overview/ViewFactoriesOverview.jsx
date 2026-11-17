@@ -1,11 +1,13 @@
 // @ts-check
 "use client";
 
+import { DataTable } from "@fob/lib-ui/primitives/data-table/data-table";
 import { useFactoriesOverview } from "@/views/factories-overview/useFactoriesOverview";
 import ViewLayout from "@/components/ViewLayout";
 
 /**
  * @typedef {import("@/lib/resource-id").ResourceId} ResourceId
+ * @typedef {import("@/views/factories-overview/useFactoriesOverview").FactoryOverviewRow} FactoryOverviewRow
  */
 
 /**
@@ -39,32 +41,50 @@ export default function ViewFactoriesOverview({ resource }) {
       {rows === null && <p style={emptyStyle}>Loading…</p>}
       {rows && rows.length === 0 && <p style={emptyStyle}>No factories configured.</p>}
       {rows && rows.length > 0 && (
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Factory</th>
-              <th style={thStyle}>Status</th>
-              <th style={thNumStyle}>PID</th>
-              <th style={thNumStyle}>CPU</th>
-              <th style={thNumStyle}>Memory</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.name} style={trStyle}>
-                <td style={tdStyle}>{row.name}</td>
-                <td style={tdStyle}>{displayStatus(row.status)}</td>
-                <td style={tdNumStyle}>{row.pid ?? "—"}</td>
-                <td style={tdNumStyle}>{row.cpu != null ? `${row.cpu}%` : "—"}</td>
-                <td style={tdNumStyle}>{row.memory != null ? formatBytes(row.memory) : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div>
+          <DataTable columns={COLUMNS} data={rows} size="sm" hidePagination={rows.length <= 30} />
+        </div>
       )}
     </ViewLayout>
   );
 }
+
+const NUMERIC = { headerClassName: "text-right", cellClassName: "text-right tabular-nums" };
+
+// Blank PID, CPU and memory (a stopped factory) sort last either way. pid
+// arrives as a string, so it sorts through Number().
+/** @type {import("@tanstack/react-table").ColumnDef<FactoryOverviewRow, any>[]} */
+const COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Factory", sortingFn: "alphanumeric" },
+  { id: "status", accessorFn: (row) => displayStatus(row.status), header: "Status" },
+  {
+    id: "pid",
+    accessorFn: (row) => (row.pid ? Number(row.pid) : undefined),
+    header: "PID",
+    sortingFn: "basic",
+    sortUndefined: "last",
+    meta: NUMERIC,
+    cell: ({ row }) => row.original.pid ?? "—",
+  },
+  {
+    id: "cpu",
+    accessorFn: (row) => row.cpu ?? undefined,
+    header: "CPU",
+    sortingFn: "basic",
+    sortUndefined: "last",
+    meta: NUMERIC,
+    cell: ({ row }) => (row.original.cpu != null ? `${row.original.cpu}%` : "—"),
+  },
+  {
+    id: "memory",
+    accessorFn: (row) => row.memory ?? undefined,
+    header: "Memory",
+    sortingFn: "basic",
+    sortUndefined: "last",
+    meta: NUMERIC,
+    cell: ({ row }) => (row.original.memory != null ? formatBytes(row.original.memory) : "—"),
+  },
+];
 
 /** @param {string} status */
 function displayStatus(status) {
@@ -90,39 +110,6 @@ const actionButtonStyle = {
   cursor: "pointer",
   whiteSpace: "nowrap",
 };
-
-/** @type {React.CSSProperties} */
-const tableStyle = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: 13,
-};
-
-/** @type {React.CSSProperties} */
-const thStyle = {
-  textAlign: "left",
-  padding: "8px 12px",
-  borderBottom: "1px solid var(--border)",
-  fontSize: 11,
-  letterSpacing: "0.06em",
-  color: "var(--muted-foreground)",
-  fontWeight: 500,
-};
-
-/** @type {React.CSSProperties} */
-const thNumStyle = { ...thStyle, textAlign: "right" };
-
-/** @type {React.CSSProperties} */
-const trStyle = {};
-
-/** @type {React.CSSProperties} */
-const tdStyle = {
-  padding: "8px 12px",
-  borderBottom: "1px solid var(--border)",
-};
-
-/** @type {React.CSSProperties} */
-const tdNumStyle = { ...tdStyle, textAlign: "right", fontVariantNumeric: "tabular-nums" };
 
 /** @type {React.CSSProperties} */
 const emptyStyle = {

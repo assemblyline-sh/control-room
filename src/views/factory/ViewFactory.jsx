@@ -1,7 +1,9 @@
 // @ts-check
 "use client";
 
+import { DataTable } from "@fob/lib-ui/primitives/data-table/data-table";
 import { openTerminal, showError } from "@/lib/tauri-api";
+import { CLICKABLE_ROWS, clickRowButton } from "@/lib/row-click";
 import { newTerminal } from "@/lib/resource-id";
 import { useTabs } from "@/state/tabs-context";
 import { useFactoryData } from "@/views/factory/useFactoryData";
@@ -10,11 +12,12 @@ import ViewLayout from "@/components/ViewLayout";
 
 /**
  * @typedef {import("@/lib/resource-id").ResourceId} ResourceId
+ * @typedef {import("@/lib/tauri-api").MonitorLineRow} LineRow
  */
 
 /**
- * Floor view for a factory: per-line summary. Clicking a line row opens that
- * line as a new tab.
+ * Floor view for a factory: per-line summary, in the factory's line order until
+ * a header is clicked. Clicking a line row opens that line as a new tab.
  *
  * @param {{ resource: Extract<ResourceId, { type: 'factory' }> }} props
  * @returns {React.JSX.Element}
@@ -110,35 +113,44 @@ export default function ViewFactory({ resource }) {
     >
       {data && data.length === 0 && <Empty hint="No lines on this factory yet." />}
       {data && data.length > 0 && (
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Line</th>
-              <th style={thStyle}>Name</th>
-              <th style={thNumStyle}>In-flight</th>
-              <th style={thNumStyle}>Stuck</th>
-              <th style={thNumStyle}>Finished</th>
-              <th style={thStyle}>Health</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row) => (
-              <tr key={row.code} style={trStyle} onClick={() => openLine(row.code)}>
-                <td style={tdLinkStyle}>{row.code}</td>
-                <td style={tdStyle} title={row.description ?? undefined}>
-                  {row.name ?? ""}
-                </td>
-                <td style={tdNumStyle}>{row.summary.in_flight}</td>
-                <td style={tdNumStyle}>{row.summary.stuck}</td>
-                <td style={tdNumStyle}>{row.summary.finished}</td>
-                <td style={tdStyle}>{health(row.summary)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div onClick={clickRowButton}>
+          <DataTable columns={columns(openLine)} data={data} className={CLICKABLE_ROWS} size="sm" hidePagination={data.length <= 30} />
+        </div>
       )}
     </ViewLayout>
   );
+}
+
+const NUMERIC = { headerClassName: "text-right", cellClassName: "text-right tabular-nums" };
+
+/**
+ * @param {(line: string) => void} openLine
+ * @returns {import("@tanstack/react-table").ColumnDef<LineRow, any>[]}
+ */
+function columns(openLine) {
+  return [
+    {
+      id: "code",
+      accessorKey: "code",
+      header: "Line",
+      sortingFn: "alphanumeric",
+      cell: ({ row }) => (
+        <button type="button" style={lineButtonStyle} onClick={() => openLine(row.original.code)}>
+          {row.original.code}
+        </button>
+      ),
+    },
+    {
+      id: "name",
+      accessorFn: (row) => row.name ?? "",
+      header: "Name",
+      cell: ({ row }) => <span title={row.original.description ?? undefined}>{row.original.name ?? ""}</span>,
+    },
+    { id: "in_flight", accessorFn: (row) => row.summary.in_flight, header: "In-flight", sortingFn: "basic", meta: NUMERIC },
+    { id: "stuck", accessorFn: (row) => row.summary.stuck, header: "Stuck", sortingFn: "basic", meta: NUMERIC },
+    { id: "finished", accessorFn: (row) => row.summary.finished, header: "Finished", sortingFn: "basic", meta: NUMERIC },
+    { id: "health", accessorFn: (row) => health(row.summary), header: "Health" },
+  ];
 }
 
 /**
@@ -164,40 +176,14 @@ function Empty({ hint }) {
 
 
 /** @type {React.CSSProperties} */
-const tableStyle = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: 13,
+const lineButtonStyle = {
+  padding: 0,
+  background: "transparent",
+  border: "none",
+  font: "inherit",
+  color: "var(--accent)",
+  cursor: "pointer",
 };
-
-/** @type {React.CSSProperties} */
-const thStyle = {
-  textAlign: "left",
-  padding: "8px 12px",
-  borderBottom: "1px solid var(--border)",
-  fontSize: 11,
-  letterSpacing: "0.06em",
-  color: "var(--muted-foreground)",
-  fontWeight: 500,
-};
-
-/** @type {React.CSSProperties} */
-const thNumStyle = { ...thStyle, textAlign: "right" };
-
-/** @type {React.CSSProperties} */
-const trStyle = { cursor: "pointer" };
-
-/** @type {React.CSSProperties} */
-const tdStyle = {
-  padding: "8px 12px",
-  borderBottom: "1px solid var(--border)",
-};
-
-/** @type {React.CSSProperties} */
-const tdNumStyle = { ...tdStyle, textAlign: "right", fontVariantNumeric: "tabular-nums" };
-
-/** @type {React.CSSProperties} */
-const tdLinkStyle = { ...tdStyle, color: "var(--accent)" };
 
 /** @type {React.CSSProperties} */
 const emptyStyle = {

@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+/* @fob/lib-ui tables (DataTable). lib-ui's own globals.css is not imported: its
+   light/dark token sets would restyle the whole app. Its Tailwind classes are
+   generated from its source and mapped onto this app's palette below. */
+@source "../../node_modules/@fob/lib-ui/src";
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--accent);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--background);
+  /* lib-ui's accent is a hover surface; this app's --accent is its link blue. */
+  --color-accent: var(--muted);
+  --color-accent-foreground: var(--foreground);
+}
+
 :root {
   --background: #0b0e14;
   --foreground: #e6edf3;
@@ -7,6 +28,14 @@
   --muted-foreground: #8b949e;
   --border: #30363d;
   --accent: #58a6ff;
+  /* Read as a raw var by DataTable's column resize handle. */
+  --primary: var(--accent);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
 }
 
 html,

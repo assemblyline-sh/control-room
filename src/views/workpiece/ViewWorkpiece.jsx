@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { DataTable } from "@fob/lib-ui/primitives/data-table/data-table";
 import { fetchFile, openInFinder, openTerminal, openUrl, showError } from "@/lib/tauri-api";
 import { workpieceRequest } from "@/lib/clear-actions";
 import { newTerminal } from "@/lib/resource-id";
@@ -13,6 +14,7 @@ import ViewLayout from "@/components/ViewLayout";
 
 /**
  * @typedef {import("@/lib/resource-id").ResourceId} ResourceId
+ * @typedef {import("@/lib/tauri-api").MonitorFileEntry} FileEntry
  */
 
 /**
@@ -113,32 +115,14 @@ export default function ViewWorkpiece({ resource }) {
             />
           )}
           <h3 style={sectionTitleStyle}>Files</h3>
-          <table style={{ ...tableStyle, marginBottom: 20 }}>
-            <tbody>
-              {data.files.map((f) => (
-                <tr key={f.path}>
-                  <td style={tdStyle}>
-                    <button type="button" style={fileLinkStyle} onClick={() => openFile(f.path)}>
-                      {f.name}
-                    </button>
-                  </td>
-                  <td style={tdSizeStyle}>{f.size === null ? "" : formatBytes(f.size)}</td>
-                  <td style={tdOpenStyle}>
-                    {!TEXT_FILE.test(f.name) && (
-                      <button
-                        type="button"
-                        style={fileLinkStyle}
-                        title="Open in the default app"
-                        onClick={() => fetchFile(resource.host, resource.factory, f.path).then(openInFinder).catch(showError)}
-                      >
-                        ↗ open
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ marginBottom: 20 }}>
+            <DataTable
+              columns={fileColumns(openFile, (f) => fetchFile(resource.host, resource.factory, f.path).then(openInFinder).catch(showError))}
+              data={data.files}
+              size="sm"
+              hidePagination={data.files.length <= 30}
+            />
+          </div>
           <h3 style={sectionTitleStyle}>Journey</h3>
           {data.events.length === 0 ? (
             <p style={emptyStyle}>(no log.jsonl events)</p>
@@ -187,6 +171,58 @@ export default function ViewWorkpiece({ resource }) {
       )}
     </ViewLayout>
   );
+}
+
+/**
+ * Files: name and size sort (size as a number, unknown sizes last); the
+ * folder's own order until a header is clicked.
+ * @param {(path: string) => void} openFile
+ * @param {(f: FileEntry) => void} openExternal
+ * @returns {import("@tanstack/react-table").ColumnDef<FileEntry, any>[]}
+ */
+function fileColumns(openFile, openExternal) {
+  return [
+    {
+      id: "name",
+      accessorKey: "name",
+      header: "Name",
+      sortingFn: "alphanumeric",
+      cell: ({ row }) => (
+        <button type="button" style={fileLinkStyle} onClick={() => openFile(row.original.path)}>
+          {row.original.name}
+        </button>
+      ),
+    },
+    {
+      id: "size",
+      accessorFn: (f) => f.size ?? undefined,
+      header: "Size",
+      sortingFn: "basic",
+      sortUndefined: "last",
+      size: 90,
+      meta: { headerClassName: "text-right", cellClassName: "text-right tabular-nums" },
+      cell: ({ row }) => <span style={mutedStyle}>{row.original.size === null ? "" : formatBytes(row.original.size)}</span>,
+    },
+    {
+      id: "open",
+      header: "",
+      size: 70,
+      enableResizing: false,
+      meta: { cellClassName: "text-right" },
+      cell: ({ row }) =>
+        TEXT_FILE.test(row.original.name) ? null : (
+          <button
+            type="button"
+            style={fileLinkStyle}
+            title="Open in the default app"
+            aria-label={`Open ${row.original.name} in the default app`}
+            onClick={() => openExternal(row.original)}
+          >
+            ↗ open
+          </button>
+        ),
+    },
+  ];
 }
 
 const TEXT_FILE = /\.(json|jsonl|txt|md|csv|log|ya?ml|xml|html?)$/i;
@@ -375,12 +411,6 @@ const fileLinkStyle = {
   cursor: "pointer",
   textAlign: "left",
 };
-
-/** @type {React.CSSProperties} */
-const tdSizeStyle = { ...tdStyle, width: 90, textAlign: "right", color: "var(--muted-foreground)", fontSize: 12, fontVariantNumeric: "tabular-nums" };
-
-/** @type {React.CSSProperties} */
-const tdOpenStyle = { ...tdStyle, width: 70, textAlign: "right" };
 
 /** @type {React.CSSProperties} */
 const errorPanelStyle = {
